@@ -3,9 +3,17 @@ import { store, getSettings, saveSettings, json, bad, body, requireSecret, today
 import { buildReport } from "./_lib/report.mjs";
 
 export default async (req) => {
-  if (!requireSecret(req, "SCRAPER_SECRET")) return bad("Not allowed", 401);
   const st = await store();
-  const b = await body(req);
+  const b = await body(req.clone());
+  // Error reports are let through even without the secret, so a wrong secret can still be explained on Admin.
+  if (b.runError) {
+    const last = await st.get("runs/error");
+    if (last && Date.now() - Date.parse(last.at) < 60e3) return json({ ok: true });
+    const e = b.runError;
+    await st.set("runs/error", { message: String(e.message || "").slice(0, 400), hint: String(e.hint || "").slice(0, 200), mode: String(e.mode || "").slice(0, 10), at: new Date().toISOString(), trusted: requireSecret(req, "SCRAPER_SECRET") });
+    return json({ ok: true });
+  }
+  if (!requireSecret(req, "SCRAPER_SECRET")) return bad("Not allowed", 401);
 
   if (b.learned) {
     const r = b.learned;

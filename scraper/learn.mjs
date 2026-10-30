@@ -45,8 +45,18 @@ export async function learnSite(page, site, hotels, log) {
     }
   }
 
-  // 1) Open the start page and see which words the site itself uses.
+  // 1) Open the start page and see which words the site itself uses. Give its scripts time to finish.
   const start = await look(site.startUrl);
+  await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
+  await sleep(3000);
+  const startText = (await page.evaluate(() => document.body?.innerText || "").catch(() => "")).trim();
+  report.startShot = (await page.screenshot({ type: "jpeg", quality: 50 }).catch(() => null))?.toString("base64");
+  note(`Opened ${page.url()} (status ${start.http || "?"}). The page shows ${startText.length} characters of text${startText ? `, starting: "${startText.replace(/\s+/g, " ").slice(0, 140)}"` : ", so it looks blank to an automated browser"}.`);
+  if (!startText || /access denied|request unsuccessful|captcha|verify you are human|pardon our interruption/i.test(startText)) {
+    report.blocked = true;
+    note("This site isn't showing its page to automated browsers. RateRaven doesn't try to get around that.");
+    return report;
+  }
   if (start.blocked || start.http === 403 || start.http === 429) {
     note("The site blocked the automatic browser on the very first page. It may only allow visits from home internet connections.");
     report.screenshot = (await page.screenshot({ type: "jpeg", quality: 50 }).catch(() => null))?.toString("base64");

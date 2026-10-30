@@ -34,14 +34,9 @@ async function api(path, opts = {}) {
 }
 
 async function newBrowser() {
-  const browser = await chromium.launch({ args: ["--disable-blink-features=AutomationControlled"] });
-  const context = await browser.newContext({
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-    viewport: { width: 1366, height: 900 },
-    locale: "en-US",
-    timezoneId: "America/New_York",
-  });
-  await context.addInitScript(() => Object.defineProperty(navigator, "webdriver", { get: () => undefined }));
+  // A plain, honest automated browser: no disguises. If a site doesn't want automated visits, we respect that.
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: "en-US", timezoneId: "America/New_York" });
   return { browser, context };
 }
 
@@ -55,7 +50,8 @@ async function makeTab(context, { pictures = false } = {}) {
   const tab = { page, payloads: [] };
   await page.route("**/*", (r) => {
     const req = r.request();
-    if ((!pictures && SKIP_TYPES.has(req.resourceType())) || SKIP_HOSTS.test(req.url())) return r.abort();
+    // Load pages completely (some sites show nothing without their own scripts); only skip pictures when we can.
+    if (!tab.full && !pictures && SKIP_TYPES.has(req.resourceType())) return r.abort();
     return r.continue();
   });
   page.on("response", async (res) => {
@@ -158,6 +154,7 @@ async function learn(force = false) {
   if (!plan.learn?.length) { log("Booking sites already learned."); return false; }
   const { browser, context } = await newBrowser();
   const tab = await makeTab(context, { pictures: true });
+  tab.full = true;
   let any = false;
   for (const site of plan.learn) {
     log(`Learning ${site.id} from ${site.startUrl}`);
@@ -240,4 +237,26 @@ async function daily() {
   log(`Done. Messages sent: ${sent}. Price drops found: ${drops}.`);
 }
 
-(PROBE ? probe() : daily()).catch((e) => { console.error(e); process.exit(1); });
+// Anything that goes wrong is sent to the Admin page in plain words, so nobody needs GitHub's logs.
+async function report(e) {
+  console.error(e);
+  const msg = String(e?.message || e);
+  const hint = /401|Not allowed/.test(msg) ? "The secret code on GitHub doesn't match the one on Netlify (SCRAPER_SECRET). Make them exactly the same."
+    : /ENOTFOUND|fetch failed|ECONNREFUSED/.test(msg) ? `Couldn't reach your website at ${SITE}.`
+    : /Executable doesn't exist|browserType.launch/.test(msg) ? "The browser didn't install on GitHub. Running it again usually fixes this."
+    : "Something unexpected went wrong. Send Claude a screenshot of this message.";
+  try { await api("/api/ingest", { method: "POST", body: JSON.stringify({ runError: { message: msg.slice(0, 400), hint, mode: PROBE ? "probe" : LEARN ? "learn" : "daily", at: new Date().toISOString() } }) }); } catch {}
+  process.exit(1);
+}
+
+// "probe" before the site is learned: learn first, so the default button always does something useful.
+async function main() {
+  if (PROBE) {
+    const plan = await api("/api/jobs?probe=1");
+    const ready = Object.values(plan.scraper?.sources || {}).some((x) => x.urlTemplate);
+    if (!ready) { log("Nothing learned yet, so learning first instead of a test search."); await learn(true); }
+    return probe();
+  }
+  return daily();
+}
+main().catch(report);

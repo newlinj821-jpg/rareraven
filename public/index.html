@@ -639,6 +639,9 @@ if (cfg.tip) {
 }
 
 refresh();
+
+// New prices arrive after each check: reload the calendar quietly every 5 minutes.
+setInterval(() => { if (!document.hidden && !state.day) { cache.clear(); refresh(); } }, 5 * 60 * 1000);
 </script>
 </body>
 </html>

@@ -141,15 +141,18 @@ export const siteUrl = (req) => process.env.URL || new URL(req.url).origin;
 // Admin sign-in: "username:password", checked against ADMIN_USERNAME + ADMIN_PASSWORD on Netlify.
 // After 10 wrong tries from one internet address in an hour, it locks for the rest of that hour.
 export async function requireAdmin(req) {
-  const user = process.env.ADMIN_USERNAME || "admin";
-  const pass = process.env.ADMIN_PASSWORD;
+  // Forgiving about phone-keyboard slips: spaces around values are ignored, and so are capitals in the username.
+  const user = (process.env.ADMIN_USERNAME || "admin").trim().toLowerCase();
+  const pass = (process.env.ADMIN_PASSWORD || "").trim();
   if (!pass) return { ok: false, status: 503, error: "Add ADMIN_USERNAME and ADMIN_PASSWORD on Netlify first." };
   const st = await store();
   const ip = req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "local";
   const lk = `limits/admin-${new Date().toISOString().slice(0, 13)}-${sha(ip).slice(0, 16)}`;
   const fails = (await st.get(lk)) || 0;
   if (fails >= 10) return { ok: false, status: 429, error: "Too many wrong tries. Wait an hour and try again." };
-  const got = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const raw = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const i = raw.indexOf(":");
+  const got = `${raw.slice(0, i).trim().toLowerCase()}:${raw.slice(i + 1).trim()}`;
   const want = `${user}:${pass}`;
   const a = Buffer.from(sha(got)), b = Buffer.from(sha(want));
   if (crypto.timingSafeEqual(a, b)) return { ok: true };

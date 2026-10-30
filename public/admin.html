@@ -96,11 +96,15 @@ function draw() {
       <div class="stat"><b>${st.payments}</b><span>passes sold</span></div>
       <div class="stat"><b>${money(st.tipCents / 100)}</b><span>${st.tips} card tips</span></div>
     </div>
+    ${A.current?.startedAt && (!L?.finished || Date.parse(A.current.startedAt) > Date.parse(L.finished)) && Date.now() - Date.parse(A.current.startedAt) < 6 * 3600e3
+      ? `<p class="note" style="margin-bottom:10px"><b>A ${esc(A.current.slot || "")} check is running now</b>, started ${ago(A.current.startedAt)}: ${A.current.total} searches.</p>` : ""}
+    ${A.runError && (!L?.finished || Date.parse(A.runError.at) > Date.parse(L.finished)) ? `<div class="note" style="margin-bottom:10px;border-left-color:var(--flamingo)"><p><b>The last check stopped ${ago(A.runError.at)}.</b> ${esc(A.runError.hint)}</p><p class="muted" style="font-size:14px;margin-top:4px;word-break:break-word">${esc(A.runError.message)}</p></div>` : ""}
+    <p class="muted" style="font-size:14px;margin-bottom:8px">This page updates itself every 30 seconds.</p>
     <p>${L?.finished ? `Last check (${esc(L.slot || "")}) finished ${ago(L.finished)}: ${L.stats?.ok ?? 0} prices read, ${L.stats?.soldout ?? 0} sold out, ${(L.stats?.empty ?? 0) + (L.stats?.error ?? 0)} couldn't be read, ${L.stats?.blocked ?? 0} blocked. Took ${L.minutes ?? "?"} min. ${L.sent ?? 0} messages sent.` : "No morning check has finished yet."}</p>
     ${L?.stats?.blockedStop ? `<p class="note" style="margin-top:10px">The booking site blocked the last check, so it stopped early. Lower "Searches per morning" and "Tabs at once" in Calendar, then try again tomorrow.</p>` : ""}
     <p class="muted" style="margin-top:8px">Checks run at 7:10am, 1:10pm and 7:10pm Central. Scraper secret ${e.scraperSecret ? '<span class="pill on">set</span>' : '<span class="pill off">missing on Netlify</span>'}</p>
     <div class="acts"><button class="btn" id="runNow" ${e.github ? "" : "disabled"}>Run the full check now</button>
-      ${e.github ? "" : `<span class="muted">To use this button, add GITHUB_TOKEN and GITHUB_REPO on Netlify. Or use GitHub → Actions → Morning price check → Run workflow.</span>`}</div>
+      ${e.github ? "" : `<span class="muted">To use this button, add GITHUB_TOKEN and GITHUB_REPO on Netlify. Or use GitHub → Actions → Price check → Run workflow.</span>`}</div>
     ${A.history.length ? `<details style="margin-top:16px"><summary>Last ${A.history.length} checks</summary><table class="t" style="margin-top:8px"><thead><tr><th>Day</th><th>Read</th><th>Sold out</th><th>Failed</th><th>Blocked</th><th>Minutes</th></tr></thead><tbody>
       ${A.history.slice().reverse().map((h) => `<tr><td>${esc(h.date || "")}</td><td>${h.stats?.ok ?? ""}</td><td>${h.stats?.soldout ?? ""}</td><td>${(h.stats?.empty ?? 0) + (h.stats?.error ?? 0)}</td><td>${h.stats?.blocked ?? ""}</td><td>${h.minutes ?? ""}</td></tr>`).join("")}</tbody></table></details>` : ""}
   </section>
@@ -117,7 +121,8 @@ function draw() {
           <ul style="margin:8px 0 0 18px">${(L.notes || []).map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
           ${L.rates && Object.keys(L.rates).length ? `<p style="margin-top:6px">Discount rates: ${Object.entries(L.rates).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(", ")}</p>` : ""}
           <p class="muted" style="margin-top:6px">${(L.tries || []).length} pages tried.</p>
-          ${L.screenshot ? `<img class="shot" alt="What the learner saw" src="data:image/jpeg;base64,${L.screenshot}">` : ""}</details>` : ""}
+          ${L.startShot ? `<p style="margin-top:8px;font-weight:700">First page it opened:</p><img class="shot" alt="The first page the learner opened" src="data:image/jpeg;base64,${L.startShot}">` : ""}
+          ${L.screenshot ? `<p style="margin-top:8px;font-weight:700">Last page it saw:</p><img class="shot" alt="What the learner saw last" src="data:image/jpeg;base64,${L.screenshot}">` : ""}</details>` : ""}
         <div class="acts"><label class="toggle"><input type="checkbox" id="srcOn" ${SRC.enabled !== false ? "checked" : ""}> Check ${SITES[srcSel]}</label>
           <button class="btn ghost small" type="button" id="relearn">Learn again at the next check</button></div>
       </div>
@@ -300,6 +305,15 @@ function draw() {
   $("#nf").onsubmit = (ev) => { ev.preventDefault(); save({ siteName: ev.target.siteName.value.trim() || "RateRaven", notice: ev.target.notice.value.trim() }); };
 }
 load();
+
+// Keep the page current while a check runs, without interrupting typing.
+setInterval(async () => {
+  if (!pw || document.hidden) return;
+  const busy = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  const editing = $("#sOut")?.innerHTML.trim() || [...document.querySelectorAll("details[open]")].length;
+  if (busy || editing) return;
+  try { const y = window.scrollY; A = await call(); draw(); window.scrollTo(0, y); } catch {}
+}, 30000);
 </script>
 </body>
 </html>

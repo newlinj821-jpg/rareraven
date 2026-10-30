@@ -42,6 +42,7 @@ export default async (req) => {
       current: await st.get("runs/current"),
       history: (await st.get("runs/history")) || [],
       probe: await st.get("runs/probe"),
+      runError: await st.get("runs/error"),
       learned: { universal: await st.get("learn/report-universal"), loews: await st.get("learn/report-loews") },
       hotels: catalog.hotels,
       rateTypes: catalog.rateTypes,

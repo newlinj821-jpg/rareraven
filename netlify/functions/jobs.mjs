@@ -37,7 +37,8 @@ export default async (req) => {
   const today = todayCT();
   const force = u.searchParams.get("force") === "1";
   const hourCT = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }).format(new Date()));
-  const slot = SLOTS.includes(u.searchParams.get("slot")) && force ? u.searchParams.get("slot") : slotFor(hourCT);
+  // A run started by hand always runs, even overnight (it counts as the morning check).
+  const slot = SLOTS.includes(u.searchParams.get("slot")) && force ? u.searchParams.get("slot") : slotFor(hourCT) || (force ? "morning" : null);
   if (!slot) return json({ skip: "Too early — the first check is at 7am Central." });
   if (!s.checks?.[slot]) return json({ skip: `The ${slot} check is switched off (Admin → Calendar).` });
   const done = await st.get(`runs/done/${today}-${slot}`);
