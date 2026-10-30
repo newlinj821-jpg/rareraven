@@ -17,9 +17,16 @@ const hotel = http.createServer((req, res) => {
   hotelHits.n++;
   const q = new URL(req.url, "http://x").searchParams;
   const base = { PBH: 340, HRH: 360, RPR: 300, CBB: 150 }[q.get("property")] ?? 200;
-  const day = Number(q.get("from").slice(8, 10));
+  const day = Number((q.get("from") || q.get("checkIn") || "0000-00-00").slice(8, 10));
   const disc = q.get("rateCode") === "PASS" ? 0.8 : 1;
   const p = Math.round((base + (day % 7) * 5 + priceShift) * disc + (Number(q.get("ad")) > 2 ? 25 : 0));
+  if (req.url.startsWith("/listing")) {
+    const disc2 = q.get("offer") === "AP" ? 0.8 : 1;
+    const ad = Number(q.get("adults")) > 2 ? 25 : 0;
+    const list = [["Loews Portofino Bay Hotel", 330], ["Hard Rock Hotel", 350], ["Universal Cabana Bay Beach Resort", 140], ["DoubleTree by Hilton at the Entrance to Universal", 99]];
+    res.setHeader("content-type", "text/html");
+    return res.end(`<html><body>${list.map(([n, p]) => `<div class="hotel-card"><h2>${n}</h2><p>from <b>$${Math.round((p + priceShift) * disc2 + ad)}</b> /night</p></div>`).join("")}</body></html>`);
+  }
   res.setHeader("content-type", "text/html");
   res.end(`<html><body>${[["Standard View, 2 Queens", p], ["Water View, 2 Queens", p + 40]].map(([n, v]) => `
     <article class="room"><h3>${n}</h3><p>${q.get("rateCode") === "PASS" ? "Annual Passholder Rate" : "Best Available Rate"}</p>
@@ -129,6 +136,28 @@ await runScraper();
 for (const p of pushes) p.title = dec(p.title);
 const p3 = pushes.find((p) => p.topic === "raven-test-topic");
 ok(p3 && !/drop/i.test(p3.title), `no repeat drop alert, just the summary ("${p3?.title}")`);
+
+console.log("Universal listing site: one search for every hotel");
+await call("/api/admin", { method: "POST", body: JSON.stringify({ settings: { scraper: { sources: { universal: {
+  urlTemplate: "http://localhost:8892/listing?checkIn={checkIn}&checkOut={checkOut}&adults={adults}", dateFormat: "YYYY-MM-DD", rateParams: { ap: { offer: "AP" } } } } } } }) }, "test-admin-user:test-admin");
+const j3 = (await call("/api/jobs?force=1&slot=morning", {}, "test-secret")).data;
+const uni = j3.lookups.filter((l) => l.src === "universal");
+ok(uni.length && uni.every((l) => l.hotel === "*"), `Universal lookups cover all hotels at once (${uni.length} searches vs ${j3.lookups.filter((l) => l.src === "loews").length} on Loews)`);
+for (const f of await fs.readdir(STORE)) if (decodeURIComponent(f).startsWith("board/")) {
+  const d = JSON.parse(await fs.readFile(path.join(STORE, f), "utf8"));
+  for (const day of Object.values(d)) for (const c of Object.values(day)) c.t = new Date(Date.now() - 864e5).toISOString();
+  await fs.writeFile(path.join(STORE, f), JSON.stringify(d));
+}
+await runScraper();
+const b3 = (await call(`/api/board?rate=ap&adults=2&month=${month}`)).data;
+const cells = Object.values(b3.days).map((d) => d.portofino).filter((c) => c?.by?.universal && c?.by?.loews);
+ok(cells.length > 0, `calendar keeps both sites' prices (${cells.length} Portofino nights with both)`);
+const c0 = cells[0];
+ok(c0 && c0.p === Math.min(c0.by.universal.p, c0.by.loews.p) && c0.via, `shows the cheaper one: Universal $${c0?.by.universal.p} vs Loews $${c0?.by.loews.p} → $${c0?.p} on ${c0?.via}`);
+const anyDay = Object.values(b3.days)[0] || {};
+ok(!Object.keys(anyDay).some((h) => /doubletree/i.test(h)), "off-site hotels on Universal's list are ignored");
+const cab = Object.values(b3.days).find((d) => d.cabana?.by?.universal);
+ok(!!cab, "Universal listing filled Cabana Bay too");
 
 console.log("Sales + limits");
 ok((await call("/api/admin", { method: "POST", body: JSON.stringify({ settings: { salesEnabled: true } }) }, "test-admin-user:test-admin")).status === 400, "can't turn on sales until Stripe keys are added");

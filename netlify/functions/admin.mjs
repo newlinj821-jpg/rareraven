@@ -42,6 +42,7 @@ export default async (req) => {
       current: await st.get("runs/current"),
       history: (await st.get("runs/history")) || [],
       probe: await st.get("runs/probe"),
+      learned: { universal: await st.get("learn/report-universal"), loews: await st.get("learn/report-loews") },
       hotels: catalog.hotels,
       rateTypes: catalog.rateTypes,
     });
@@ -78,7 +79,7 @@ export default async (req) => {
     const repo = process.env.GITHUB_REPO, token = process.env.GITHUB_TOKEN;
     if (!repo || !token) return bad("To start checks from here, add GITHUB_TOKEN and GITHUB_REPO on Netlify. Or use GitHub → Actions → Morning price check → Run workflow.");
     const inputs = b.action === "run" ? { mode: "daily" } : {
-      mode: "probe", hotel: b.hotel || "portofino", date: b.date || "", rate: b.rate || "standard", adults: String(b.adults || 2),
+      mode: "probe", site: b.site || "universal", hotel: b.hotel || "portofino", date: b.date || "", rate: b.rate || "standard", adults: String(b.adults || 2),
     };
     const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/morning-check.yml/dispatches`, {
       method: "POST",

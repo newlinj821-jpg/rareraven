@@ -51,6 +51,7 @@ export function buildScraperConfig(hotelLinks, rateLinks) {
   const parsed = hotels.map(([id, link]) => [id, analyze(link)]);
   const [, first] = parsed[0];
   const notes = [];
+  const listing = parsed.length === 1 && parsed[0][0] === "*";
   if (!first.hasCheckout) notes.push("Only one date was found in the link. If the site uses a 'nights' number instead of a check-out date, make sure {nights} appears in the template below.");
 
   // Find what changes between hotels: a query value, or a part of the web address.
@@ -67,11 +68,12 @@ export function buildScraperConfig(hotelLinks, rateLinks) {
       for (let i = 0; i < segs.length; i++) if (others.some(([, p]) => p.url.pathname.split("/")[i] !== segs[i])) { hotelPathIndex = i; break; }
     }
   }
-  if (!hotelParam && hotelPathIndex == null) {
+  if (!listing && !hotelParam && hotelPathIndex == null) {
     hotelParam = [...first.tpl.searchParams.keys()].find((k) => /^(hotel|hotelcode|hotel_code|hotelid|property|propertycode|propertyid|prop|code|resort|hid)$/i.test(k)) || null;
     if (!hotelParam) notes.push("Couldn't tell which part of the link is the hotel. Paste links for two or more hotels so it can compare them.");
   }
   for (const [id, p] of parsed) {
+    if (listing) break;
     if (hotelParam) codes[id] = p.url.searchParams.get(hotelParam);
     else if (hotelPathIndex != null) codes[id] = p.url.pathname.split("/")[hotelPathIndex];
   }

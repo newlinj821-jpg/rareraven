@@ -57,6 +57,8 @@ import { buildScraperConfig } from "/setup-helper.js";
 $("#hdr").innerHTML = header();
 let pw = ""; try { pw = sessionStorage.getItem("rr.admin2") || ""; } catch {}
 let A;
+const SITES = { universal: "Universal’s site", loews: "Loews’ site" };
+let srcSel = "universal";
 const call = (body) => api("/api/admin", { method: body ? "POST" : "GET", body, headers: { authorization: `Bearer ${pw}` } });
 
 function login(msg = "") {
@@ -78,8 +80,10 @@ const save = async (settings, msg = "Saved") => {
 function draw() {
   const s = A.settings, e = A.env, st = A.stats, L = A.lastRun, P = A.probe;
   const H = A.hotels, R = A.rateTypes;
-  const setUp = !!s.scraper.urlTemplate;
-  const codes = Object.keys(s.scraper.hotelCodes || {}).length;
+  const SC = s.scraper;
+  const SRC = SC.sources?.[srcSel] || {};
+  const listingNow = SRC.urlTemplate && !SRC.urlTemplate.includes("{hotel}");
+  const codes = new Set(Object.values(SC.sources || {}).flatMap((x) => (x.urlTemplate && !x.urlTemplate.includes("{hotel}")) ? H.map((h) => h.id) : Object.keys(x.hotelCodes || {}))).size;
   $("#main").innerHTML = `<div class="adm">
   <nav class="toc" aria-label="Admin sections"><a href="#status">Status</a><a href="#scraper">Scraper setup</a><a href="#test">Test a search</a><a href="#calendar">Calendar</a><a href="#sales">Sales</a><a href="#tipjar">Tip jar</a><a href="#email">Email</a><a href="#site">Site</a></nav>
   <div>
@@ -102,34 +106,58 @@ function draw() {
   </section>
 
   <section class="panel pad" id="scraper"><h2>Scraper setup</h2>
-    <p class="muted">Teach the scraper the booking site's links. On the official booking site, search each hotel for any dates with 2 adults, then copy the address bar and paste it next to that hotel. It works out the rest. ${setUp ? `Set up for ${codes} of ${H.length} hotels.` : ""}</p>
+    <p class="muted">The scraper teaches itself each booking site. Universal’s site is switched on; Loews’ site is off until you switch it on. The calendar shows whichever is cheaper.</p>
+    <div class="seg" id="srcTabs" role="group" aria-label="Booking site" style="margin:6px 0 18px">${Object.entries(SITES).map(([id, label]) => `<button type="button" data-src="${id}" aria-pressed="${id === srcSel}">${label}${SC.sources?.[id]?.urlTemplate ? " ✓" : ""}</button>`).join("")}</div>
+    ${(() => {
+      const L = A.learned?.[srcSel];
+      return `<div class="out" style="margin-bottom:18px">
+        <p style="font-weight:700">Auto-learner ${SRC.urlTemplate ? `<span class="pill on">learned</span>` : `<span class="pill off">not learned yet</span>`}</p>
+        <p style="margin-top:6px">${SRC.urlTemplate ? `It knows how to search ${SITES[srcSel]}.${SRC.learnedAt ? ` Learned ${ago(SRC.learnedAt)}.` : ""}` : `The next price check teaches itself ${SITES[srcSel]} automatically, starting from <span style="word-break:break-all">${esc(SRC.startUrl || "")}</span>. You don't need to do anything below.`}</p>
+        ${L ? `<details style="margin-top:8px"><summary>What happened last time (${ago(L.at)})</summary>
+          <ul style="margin:8px 0 0 18px">${(L.notes || []).map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
+          ${L.rates && Object.keys(L.rates).length ? `<p style="margin-top:6px">Discount rates: ${Object.entries(L.rates).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(", ")}</p>` : ""}
+          <p class="muted" style="margin-top:6px">${(L.tries || []).length} pages tried.</p>
+          ${L.screenshot ? `<img class="shot" alt="What the learner saw" src="data:image/jpeg;base64,${L.screenshot}">` : ""}</details>` : ""}
+        <div class="acts"><label class="toggle"><input type="checkbox" id="srcOn" ${SRC.enabled !== false ? "checked" : ""}> Check ${SITES[srcSel]}</label>
+          <button class="btn ghost small" type="button" id="relearn">Learn again at the next check</button></div>
+      </div>
+      <details><summary style="font-weight:700;cursor:pointer;margin-bottom:12px">Set it up by hand instead (optional)</summary>`;
+    })()}
     <form id="sf">
-      <div class="hl">${H.map((h) => `<span>${esc(h.short)}${s.scraper.hotelCodes?.[h.id] ? ` <span class="pill on">${esc(s.scraper.hotelCodes[h.id])}</span>` : ""}</span><input name="h_${h.id}" placeholder="Paste a ${esc(h.short)} search link" spellcheck="false">`).join("")}</div>
+      <label class="toggle" style="margin-bottom:14px"><input type="checkbox" name="enabled" ${SRC.enabled !== false ? "checked" : ""}> Check this site</label>
+      <label class="f" style="margin-bottom:16px">One link for every hotel <small>${srcSel === "universal" ? "Best for Universal’s site: search all hotels at once (the hotel list page), then paste the link. One search then covers all 11 hotels." : "Use this if the site shows all hotels on one results page."}</small>
+        <input name="listing" placeholder="Paste a search link that lists every hotel" spellcheck="false"></label>
+      ${listingNow ? `<p class="note" style="margin-bottom:14px">Set up as one search for every hotel.</p>` : ""}
+      <details ${srcSel === "loews" ? "open" : ""}><summary style="font-weight:700;cursor:pointer;margin-bottom:10px">Or one link per hotel</summary>
+        <div class="hl">${H.map((h) => `<span>${esc(h.short)}${SRC.hotelCodes?.[h.id] ? ` <span class="pill on">${esc(SRC.hotelCodes[h.id])}</span>` : ""}</span><input name="h_${h.id}" placeholder="Paste a ${esc(h.short)} search link" spellcheck="false">`).join("")}</div></details>
       <h3 style="margin:22px 0 6px">Discount rates</h3>
-      <p class="muted" style="margin-bottom:12px">Search any hotel again, this time choosing the rate (Annual Passholder, Florida resident, Military), and paste that link. If the site picks the rate with a button instead of the link, type the button's words in "Click text".</p>
-      <div class="hl">${R.filter((r) => r.id !== "standard").map((r) => `<span>${esc(r.name)}${Object.keys(s.scraper.rateParams?.[r.id] || {}).length ? ` <span class="pill on">set</span>` : ""}</span>
-        <div style="display:grid;gap:6px;grid-template-columns:1fr 200px"><input name="r_${r.id}" placeholder="Paste a ${esc(r.name)} search link" spellcheck="false"><input name="c_${r.id}" placeholder="Click text" value="${esc(s.scraper.rateClickText?.[r.id] || "")}"></div>`).join("")}</div>
+      <p class="muted" style="margin-bottom:12px">Search again choosing the rate (Annual Passholder, Florida resident, Military) and paste that link. If the site picks the rate with a button instead of the link, type the button's words in "Click text".</p>
+      <div class="hl">${R.filter((r) => r.id !== "standard").map((r) => `<span>${esc(r.name)}${Object.keys(SRC.rateParams?.[r.id] || {}).length ? ` <span class="pill on">set</span>` : ""}</span>
+        <div style="display:grid;gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,160px)"><input name="r_${r.id}" placeholder="Paste a ${esc(r.name)} search link" spellcheck="false"><input name="c_${r.id}" placeholder="Click text" value="${esc(SRC.rateClickText?.[r.id] || "")}"></div>`).join("")}</div>
       <div class="acts"><button class="btn" type="button" id="analyze">Work it out</button><span class="err" id="sErr" role="alert"></span></div>
     </form>
     <div id="sOut"></div>
-    <details style="margin-top:18px"><summary>Advanced: edit the settings by hand</summary>
+    <details style="margin-top:18px"><summary>Advanced: edit this site's settings by hand</summary>
       <p class="muted" style="margin:8px 0">Optional CSS selectors (card, name, price) help if the automatic reader picks the wrong numbers.</p>
-      <textarea id="raw" rows="14" style="font-size:13px;margin-top:8px" spellcheck="false">${esc(JSON.stringify(s.scraper, null, 2))}</textarea>
+      <textarea id="raw" rows="14" style="font-size:13px;margin-top:8px" spellcheck="false">${esc(JSON.stringify(SRC, null, 2))}</textarea>
       <div class="acts"><button class="btn ghost" id="saveRaw">Save these settings</button></div></details>
+    </details>
   </section>
 
   <section class="panel pad" id="test"><h2>Test a search</h2>
     <p class="muted">Runs one search on GitHub and shows a screenshot and every room it found. Use this after setup, and any time prices look wrong.</p>
     <form id="tf" class="grid-form">
+      <label class="f">Booking site<select name="site">${Object.entries(SITES).map(([id, l]) => `<option value="${id}">${l}</option>`).join("")}</select></label>
       <label class="f">Hotel<select name="hotel">${H.map((h) => `<option value="${h.id}">${esc(h.name)}</option>`).join("")}</select></label>
       <label class="f">Check-in<input type="date" name="date"></label>
       <label class="f">Rate<select name="rate">${R.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select></label>
       <label class="f">Adults<input type="number" name="adults" value="2" min="1" max="6"></label>
       <div class="span-all acts" style="margin-top:0"><button class="btn" ${e.github ? "" : "disabled"}>Run test</button><button class="btn ghost" type="button" id="reload">Refresh results</button>
-        ${e.github ? "" : `<span class="muted">Without GITHUB_TOKEN: GitHub → Actions → Morning price check → Run workflow, mode "probe".</span>`}</div>
+        ${e.github ? "" : `<span class="muted">Without GITHUB_TOKEN: GitHub → Actions → Price check → Run workflow, mode "probe".</span>`}</div>
     </form>
     ${P ? `<div style="margin-top:18px"><h3>Last test, ${ago(P.at)}</h3>
-      <p style="margin-top:6px">${esc(P.result.hotel)}, ${esc(P.result.checkIn)}, ${esc(P.result.rate)}: <b>${esc(P.result.status)}</b>${P.result.lowest != null ? `, lowest ${money(P.result.lowest)} (${esc(P.result.lowestRoom)})` : ""}${P.result.error ? ` — ${esc(P.result.error)}` : ""}</p>
+      <p style="margin-top:6px">${esc(SITES[P.result.src] || "")} ${esc(P.result.hotel === "*" ? "all hotels" : P.result.hotel)}, ${esc(P.result.checkIn)}, ${esc(P.result.rate)}: <b>${esc(P.result.status)}</b>${P.result.lowest != null ? `, lowest ${money(P.result.lowest)} (${esc(P.result.lowestRoom)})` : ""}${P.result.error ? ` — ${esc(P.result.error)}` : ""}</p>
+      ${P.result.hotels && Object.keys(P.result.hotels).length ? `<p style="margin-top:8px"><b>Universal hotels found:</b> ${Object.entries(P.result.hotels).map(([id, h]) => `${esc(H.find((x) => x.id === id)?.short || id)} ${money(h.price)}`).join(", ")}</p>` : ""}
       ${P.result.rooms?.length ? `<table class="t" style="margin-top:10px"><thead><tr><th>Room</th><th>Per night</th><th>Total</th><th>Was</th><th>Discounts shown</th></tr></thead><tbody>${P.result.rooms.map((r) => `<tr><td>${esc(r.name)}</td><td>${money(r.price)}</td><td>${r.total != null ? money(r.total) : ""}</td><td>${r.was ? money(r.was) : ""}</td><td>${esc((r.offers || []).join(", "))}</td></tr>`).join("")}</tbody></table>` : `<p class="muted" style="margin-top:8px">No rooms were read. Check the screenshot: if it shows prices, add CSS selectors under Advanced.</p>`}
       <p class="muted" style="margin-top:8px;word-break:break-all">Link used: ${esc(P.result.url || "")}</p>
       ${P.result.shot ? `<img class="shot" alt="Screenshot of the booking page the scraper saw" src="data:image/jpeg;base64,${P.result.shot}">` : ""}</div>` : ""}
@@ -200,39 +228,45 @@ function draw() {
   $("#runNow").onclick = async () => { try { toast((await call({ action: "run" })).message); } catch (x) { toast(x.message); } };
   $("#tf").onsubmit = async (ev) => { ev.preventDefault(); const v = Object.fromEntries(new FormData(ev.target)); try { toast((await call({ action: "probe", ...v })).message); } catch (x) { toast(x.message); } };
 
+  $("#relearn").onclick = () => save({ scraper: { sources: { [srcSel]: { relearn: true, enabled: true } } } }, "It will learn again at the next check.");
+  $("#srcOn").onchange = (ev) => save({ scraper: { sources: { [srcSel]: { enabled: ev.target.checked } } } }, ev.target.checked ? "Switched on" : "Switched off");
+  $("#srcTabs").onclick = (ev) => { const b = ev.target.closest("[data-src]"); if (b) { srcSel = b.dataset.src; draw(); $("#scraper").scrollIntoView(); } };
   let proposed = null;
   $("#analyze").onclick = () => {
     const f = $("#sf"), hl = {}, rl = {};
-    H.forEach((h) => (hl[h.id] = f[`h_${h.id}`].value));
+    if (f.listing.value.trim()) hl["*"] = f.listing.value;
+    else H.forEach((h) => (hl[h.id] = f[`h_${h.id}`].value));
     R.forEach((r) => r.id !== "standard" && (rl[r.id] = f[`r_${r.id}`].value));
     $("#sErr").textContent = "";
     const anyRate = Object.values(rl).some((x) => x.trim());
     const anyHotel = Object.values(hl).some((x) => x.trim());
     const clicks = Object.fromEntries(R.filter((r) => r.id !== "standard").map((r) => [r.id, f[`c_${r.id}`].value.trim()]));
     try {
-      if (!anyHotel && !anyRate) { proposed = { rateClickText: clicks }; }
+      if (!anyHotel && !anyRate) { proposed = { rateClickText: clicks, enabled: f.enabled.checked }; }
       else {
-        if (!anyHotel) throw new Error("Paste at least one hotel's normal search link too, so the rate links can be compared with it.");
+        if (!anyHotel) throw new Error("Paste a normal search link too, so the rate links can be compared with it.");
         const c = buildScraperConfig(hl, rl);
         proposed = {
+          enabled: f.enabled.checked,
           urlTemplate: c.urlTemplate, dateFormat: c.dateFormat,
-          hotelCodes: { ...s.scraper.hotelCodes, ...c.hotelCodes },
-          rateParams: { ...s.scraper.rateParams, ...c.rateParams },
+          hotelCodes: hl["*"] ? {} : { ...SRC.hotelCodes, ...c.hotelCodes },
+          rateParams: { ...SRC.rateParams, ...c.rateParams },
           rateClickText: clicks,
         };
         proposed._notes = c.notes;
       }
       const notes = proposed._notes || []; delete proposed._notes;
-      $("#sOut").innerHTML = `<div class="out" style="margin-top:16px"><p style="font-weight:650;margin-bottom:8px">Here's what it found. Check it looks right, then save.</p>
+      const listing = proposed.urlTemplate && !proposed.urlTemplate.includes("{hotel}");
+      $("#sOut").innerHTML = `<div class="out" style="margin-top:16px"><p style="font-weight:700;margin-bottom:8px">Here's what it found for ${SITES[srcSel]}. Check it looks right, then save.</p>
         ${proposed.urlTemplate ? `<p>Link pattern:</p><code>${esc(proposed.urlTemplate)}</code><p style="margin-top:8px">Date style: <b>${esc(proposed.dateFormat)}</b></p>` : ""}
-        ${proposed.hotelCodes ? `<p style="margin-top:8px">Hotel codes: ${Object.entries(proposed.hotelCodes).map(([k, v]) => `${esc(k)} = <b>${esc(v)}</b>`).join(", ")}</p>` : ""}
+        ${listing ? `<p style="margin-top:8px"><b>One search covers every hotel.</b> Only Universal’s own on-site hotels are kept; partner and off-site hotels are ignored.</p>` : proposed.hotelCodes ? `<p style="margin-top:8px">Hotel codes: ${Object.entries(proposed.hotelCodes).map(([k, v]) => `${esc(k)} = <b>${esc(v)}</b>`).join(", ")}</p>` : ""}
         ${proposed.rateParams ? `<p style="margin-top:8px">Rate codes: ${Object.entries(proposed.rateParams).filter(([, v]) => Object.keys(v).length).map(([k, v]) => `${esc(k)} adds <b>${esc(Object.entries(v).map(([a, b]) => b === null ? `no ${a}` : `${a}=${b}`).join(", "))}</b>`).join("; ") || "none yet"}</p>` : ""}
         ${notes.map((n) => `<p class="err" style="margin-top:8px">${esc(n)}</p>`).join("")}
-        <div class="acts"><button class="btn lagoon" id="saveS">Save scraper setup</button></div></div>`;
-      $("#saveS").onclick = () => save({ scraper: proposed }, "Scraper setup saved. Run a test search next.");
+        <div class="acts"><button class="btn lagoon" id="saveS">Save ${SITES[srcSel]} setup</button></div></div>`;
+      $("#saveS").onclick = () => save({ scraper: { sources: { [srcSel]: proposed } } }, "Saved. Run a test search next.");
     } catch (x) { $("#sErr").textContent = x.message; }
   };
-  $("#saveRaw").onclick = () => { try { save({ scraper: JSON.parse($("#raw").value) }); } catch { toast("That isn't valid settings text (JSON)."); } };
+  $("#saveRaw").onclick = () => { try { save({ scraper: { sources: { [srcSel]: JSON.parse($("#raw").value) } } }); } catch { toast("That isn't valid settings text (JSON)."); } };
 
   const est = () => {
     if (!$("#cf").ck_morning) return;

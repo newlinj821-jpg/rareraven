@@ -3,6 +3,7 @@ export default {
   "hotels": [
     {
       "id": "portofino",
+      "match": "portofino",
       "name": "Loews Portofino Bay Hotel",
       "short": "Portofino",
       "tier": "Premier",
@@ -10,6 +11,7 @@ export default {
     },
     {
       "id": "hardrock",
+      "match": "hard rock",
       "name": "Hard Rock Hotel",
       "short": "Hard Rock",
       "tier": "Premier",
@@ -17,6 +19,7 @@ export default {
     },
     {
       "id": "royalpacific",
+      "match": "royal pacific",
       "name": "Loews Royal Pacific Resort",
       "short": "Royal Pacific",
       "tier": "Premier",
@@ -24,6 +27,7 @@ export default {
     },
     {
       "id": "helios",
+      "match": "helios",
       "name": "Helios Grand Hotel",
       "short": "Helios Grand",
       "tier": "Premier",
@@ -31,6 +35,7 @@ export default {
     },
     {
       "id": "sapphire",
+      "match": "sapphire",
       "name": "Loews Sapphire Falls Resort",
       "short": "Sapphire Falls",
       "tier": "Preferred",
@@ -38,6 +43,7 @@ export default {
     },
     {
       "id": "aventura",
+      "match": "aventura",
       "name": "Aventura Hotel",
       "short": "Aventura",
       "tier": "Prime",
@@ -45,6 +51,7 @@ export default {
     },
     {
       "id": "cabana",
+      "match": "cabana",
       "name": "Cabana Bay Beach Resort",
       "short": "Cabana Bay",
       "tier": "Prime",
@@ -52,6 +59,7 @@ export default {
     },
     {
       "id": "stellanova",
+      "match": "stella nova",
       "name": "Stella Nova Resort",
       "short": "Stella Nova",
       "tier": "Prime",
@@ -59,6 +67,7 @@ export default {
     },
     {
       "id": "terraluna",
+      "match": "terra luna",
       "name": "Terra Luna Resort",
       "short": "Terra Luna",
       "tier": "Prime",
@@ -66,6 +75,7 @@ export default {
     },
     {
       "id": "surfside",
+      "match": "surfside",
       "name": "Endless Summer Resort – Surfside Inn",
       "short": "Surfside",
       "tier": "Value",
@@ -73,6 +83,7 @@ export default {
     },
     {
       "id": "dockside",
+      "match": "dockside",
       "name": "Endless Summer Resort – Dockside Inn",
       "short": "Dockside",
       "tier": "Value",

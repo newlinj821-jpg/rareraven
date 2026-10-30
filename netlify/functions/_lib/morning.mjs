@@ -1,5 +1,5 @@
 // Builds each person's morning message: price drops, daily summary, cancel-deadline warnings.
-import { store, todayCT, addDays, daysBetween, lookupKey, HOTELS, RATES, catalog, money, siteUrl } from "./core.mjs";
+import { store, todayCT, addDays, daysBetween, lookupKey, HOTELS, RATES, catalog, money, siteUrl, SOURCES } from "./core.mjs";
 
 export function pickPrice(rec, roomFilter) {
   if (!rec?.rooms?.length) return null;
@@ -11,7 +11,7 @@ export function pickPrice(rec, roomFilter) {
   let best = null;
   for (const r of pool) {
     const p = r.price ?? (r.total != null ? r.total : null);
-    if (p != null && (!best || p < best.price)) best = { name: r.name, price: p, offers: r.offers || [], was: r.was || null };
+    if (p != null && (!best || p < best.price)) best = { name: r.name, price: p, offers: r.offers || [], was: r.was || null, site: r.site || null };
   }
   return best;
 }
@@ -47,6 +47,7 @@ export async function morningFor(key, settings, base, slot = "morning") {
       const prev = w.lastPrice;
       w.lastPrice = price;
       w.lastRoom = best.name;
+      w.lastSite = best.site;
       w.lastOffers = best.offers;
       w.lastChecked = today;
       w.status = "ok";
@@ -61,7 +62,7 @@ export async function morningFor(key, settings, base, slot = "morning") {
       else if (price <= bar - minDrop) {
         const tax = 1 + (catalog.taxRate || 0);
         const vsPaid = w.paid ? ` (you paid ${money(w.paid)}: save about ${money((w.paid - price) * w.nights * tax)} with tax for ${w.nights} night${w.nights > 1 ? "s" : ""})` : "";
-        drops.push(`⬇️ ${label}: now ${money(price)}/night${vsPaid}${best.offers.length ? ` — ${best.offers[0]}` : ""}`);
+        drops.push(`⬇️ ${label}: now ${money(price)}/night${best.site && SOURCES[best.site] ? ` on ${SOURCES[best.site]}` : ""}${vsPaid}${best.offers.length ? ` — ${best.offers[0]}` : ""}`);
         w.alertBelow = price; // only tell them again if it drops further
         w.drops = (w.drops || 0) + 1;
       }

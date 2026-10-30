@@ -8,12 +8,14 @@
 //   SCRAPER_SECRET  same value you put on Netlify
 import { chromium } from "playwright";
 import fs from "node:fs/promises";
-import { buildUrl, readPageInBrowser, readJson, summarize } from "./extract.mjs";
+import { buildUrl, readPageInBrowser, readJson, summarize, siteOf, byHotel } from "./extract.mjs";
+import { learnSite } from "./learn.mjs";
 
-const SITE = (process.env.SITE_URL || "").replace(/\/$/, "");
+const SITE = (process.env.SITE_URL || "https://rateraven.netlify.app").replace(/\/$/, "");
 const SECRET = process.env.SCRAPER_SECRET || "";
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.includes("=")).map((a) => a.split(/=(.*)/s).slice(0, 2)));
 const PROBE = process.argv.includes("--probe");
+const LEARN = process.argv.includes("--learn") || process.env.LEARN === "true";
 const FORCE = process.argv.includes("--force") || process.env.FORCE_RUN === "true";
 const OUT = "probe-output";
 
@@ -91,16 +93,21 @@ async function check(tab, cfg, l, { screenshot = false } = {}) {
     const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
     const code = resp?.status() || 0;
     if (code === 429 || code === 403) return { ...l, status: "blocked", httpStatus: code, url, ms: Date.now() - started };
-    const click = (cfg.rateClickText || {})[l.rate];
+    const site = siteOf(cfg, l);
+    const click = (site.rateClickText || {})[l.rate];
     if (click) {
-      await page.getByText(click, { exact: false }).first().click({ timeout: 15000 }).catch(() => {});
+      for (const part of click.split(">").map((x) => x.trim()).filter(Boolean)) {
+        await page.getByText(part, { exact: false }).first().click({ timeout: 8000 }).catch(() => {});
+        await sleep(700);
+      }
     }
     await waitForPrices(page);
-    const seen = await page.evaluate(readPageInBrowser, cfg.selectors || null);
+    const seen = await page.evaluate(readPageInBrowser, site.selectors || null);
     let rooms = seen.rooms;
     let source = "page";
     if (!rooms.length) { rooms = readJson(tab.payloads); source = "json"; }
     const best = summarize(rooms).pick(l.nights, null);
+    const hotels = l.hotel === "*" ? byHotel(rooms, cfg.hotels || []) : null;
     const status = seen.blocked ? "blocked" : rooms.length ? "ok" : seen.soldOut ? "soldout" : "empty";
     const shot = screenshot ? (await page.screenshot({ type: "jpeg", quality: 55, fullPage: false })).toString("base64") : null;
     return {
@@ -108,6 +115,7 @@ async function check(tab, cfg, l, { screenshot = false } = {}) {
       lowest: best ? Math.round(best.nightlyPrice * 100) / 100 : null,
       lowestRoom: best?.name || null,
       rooms: rooms.map((r) => ({ name: r.name, price: r.price, total: r.total, was: r.was, offers: r.offers })),
+      hotels,
       ms: Date.now() - started,
       title: seen.title,
       shot,
@@ -127,7 +135,7 @@ async function probe() {
     log("Using local config (site not reachable):", e.message);
   }
   const l = {
-    k: "probe", hotel: args.hotel || "portofino", rate: args.rate || "standard",
+    k: "probe", src: args.site || Object.keys(cfg.sources || {})[0], hotel: args.hotel || "portofino", rate: args.rate || "standard",
     checkIn: args.date || new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10),
     nights: Number(args.nights || 1), adults: Number(args.adults || 2),
   };
@@ -144,8 +152,27 @@ async function probe() {
   if (settingsFromSite) await api("/api/ingest", { method: "POST", body: JSON.stringify({ probe: r }) }).catch((e) => log("Could not send test result:", e.message));
 }
 
+/* -------- auto-learn -------- */
+async function learn(force = false) {
+  const plan = await api(`/api/jobs?learn=1${force ? "&force=1" : ""}`);
+  if (!plan.learn?.length) { log("Booking sites already learned."); return false; }
+  const { browser, context } = await newBrowser();
+  const tab = await makeTab(context, { pictures: true });
+  let any = false;
+  for (const site of plan.learn) {
+    log(`Learning ${site.id} from ${site.startUrl}`);
+    const report = await learnSite(tab.page, site, plan.hotels, log).catch((e) => ({ site: site.id, notes: [String(e.message || e)] }));
+    await api("/api/ingest", { method: "POST", body: JSON.stringify({ learned: report }) }).catch((e) => log("Could not save what was learned:", e.message));
+    if (report.config) any = true;
+  }
+  await browser.close();
+  return any;
+}
+
 /* -------- daily run -------- */
 async function daily() {
+  // Teach itself the booking sites first, if they aren't set up yet (or Admin asked to relearn).
+  await learn(LEARN).catch((e) => log("Learning step skipped:", e.message));
   const slotQ = process.env.FORCE_SLOT ? `&slot=${process.env.FORCE_SLOT}` : "";
   const jobs = await api(`/api/jobs${FORCE ? "?force=1" + slotQ : ""}`);
   if (jobs.skip) { log("Skipping:", jobs.skip); return; }

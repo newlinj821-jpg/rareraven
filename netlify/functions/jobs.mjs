@@ -2,7 +2,7 @@
 // morning (7:10am Central), afternoon (1:10pm) and evening (7:10pm).
 // Watched rooms always come first. Two people watching the same room = one search.
 // Then the calendar: closer dates are refreshed more often than far-away ones.
-import { store, getSettings, json, bad, requireSecret, todayCT, addDays, daysBetween, lookupKey, boardAdults, planOf, rid, HOTELS, catalog } from "./_lib/core.mjs";
+import { store, getSettings, json, bad, requireSecret, todayCT, addDays, daysBetween, lookupKey, boardAdults, planOf, rid, HOTELS, catalog, activeSources, sourcesFor, isListing } from "./_lib/core.mjs";
 
 // How often each calendar cell should be refreshed, by how far away the date is.
 // The next two weeks are refreshed at every check; the rest once a day or less.
@@ -16,7 +16,22 @@ export default async (req) => {
   if (!requireSecret(req, "SCRAPER_SECRET")) return bad("Not allowed", 401);
   const u = new URL(req.url);
   const s = await getSettings();
-  if (u.searchParams.get("probe")) return json({ scraper: s.scraper });
+  if (u.searchParams.get("learn")) {
+    // Which booking sites still need teaching? (Not set up yet, or Admin asked to learn again.)
+    const st0 = await store();
+    const force0 = u.searchParams.get("force") === "1";
+    const learn = [];
+    for (const [id, src] of Object.entries(s.scraper.sources || {})) {
+      if (src.enabled === false || !src.startUrl) continue;
+      if (src.urlTemplate && !src.relearn && !force0) continue;
+      const last = await st0.get(`learn/last-${id}`);
+      if (!force0 && !src.relearn && last && Date.now() - Date.parse(last.at) < 20 * 3600e3) continue; // tried recently
+      learn.push({ id, startUrl: src.startUrl });
+      await st0.set(`learn/last-${id}`, { at: new Date().toISOString() });
+    }
+    return json({ learn, hotels: catalog.hotels });
+  }
+  if (u.searchParams.get("probe")) return json({ scraper: { ...s.scraper, sources: Object.fromEntries(activeSources(s)), hotels: catalog.hotels } });
 
   const st = await store();
   const today = todayCT();
@@ -27,14 +42,18 @@ export default async (req) => {
   if (!s.checks?.[slot]) return json({ skip: `The ${slot} check is switched off (Admin → Calendar).` });
   const done = await st.get(`runs/done/${today}-${slot}`);
   if (!force && done) return json({ skip: `Already did the ${slot} check today.` });
-  if (!s.scraper.urlTemplate) return json({ skip: "Scraper isn't set up yet (Admin → Scraper setup)." });
+  if (!activeSources(s).length) return json({ skip: "Scraper isn't set up yet (Admin → Scraper setup)." });
 
+  // One search per booking site. Two people watching the same room still share it.
   const lookups = new Map();
   const add = (l, watch) => {
-    const k = lookupKey(l);
-    const have = lookups.get(k);
-    if (have) { if (watch) have.w = 1; return; }
-    lookups.set(k, { k, hotel: l.hotel, rate: l.rate, checkIn: l.checkIn, nights: l.nights, adults: boardAdults(l.adults), ...(watch ? { w: 1 } : {}) });
+    for (const src of sourcesFor(s, l.hotel, l.rate)) {
+      const hotel = isListing(s.scraper.sources[src]) ? "*" : l.hotel; // one search covers every hotel
+      const k = `${src}|${lookupKey({ ...l, hotel })}`;
+      const have = lookups.get(k);
+      if (have) { if (watch) have.w = 1; continue; }
+      lookups.set(k, { k, src, hotel, rate: l.rate, checkIn: l.checkIn, nights: l.nights, adults: boardAdults(l.adults), ...(watch ? { w: 1 } : {}) });
+    }
   };
 
   // 1) Watched rooms
@@ -46,7 +65,7 @@ export default async (req) => {
     for (const w of key.watches || []) {
       if (w.paused || w.checkIn < today) continue;
       if (plan.windowDays && daysBetween(today, w.checkIn) > plan.windowDays) continue;
-      if (!HOTELS[w.hotel] || !s.scraper.hotelCodes?.[w.hotel]) continue;
+      if (!HOTELS[w.hotel] || !sourcesFor(s, w.hotel, w.rate).length) continue;
       watchCount++;
       add(w, true);
     }
@@ -74,7 +93,7 @@ export default async (req) => {
           if (date < today || date > end) continue;
           const out = daysBetween(today, date);
           for (const h of catalog.hotels) {
-            if (!s.scraper.hotelCodes?.[h.id]) continue; // hotel not set up yet
+            if (!sourcesFor(s, h.id, rate).length) continue; // no site can check this hotel at this rate yet
             const cell = file[date]?.[h.id];
             const ageDays = cell?.t ? (now - Date.parse(cell.t)) / 864e5 : Infinity;
             const due = ageDays / intervalDays(out);
@@ -103,7 +122,7 @@ export default async (req) => {
   await st.set("runs/current", { runId, date: today, slot, startedAt: new Date().toISOString(), total: list.length, watchCount });
   return json({
     runId, slot,
-    scraper: s.scraper,
+    scraper: { ...s.scraper, sources: Object.fromEntries(activeSources(s)), hotels: catalog.hotels },
     lookups: [...watched, ...rest],
     watchCount,
     calendarDue: cells.length,

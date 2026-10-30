@@ -72,4 +72,4 @@ export function header(active = "") {
 }
 export const footer = (name = "RateRaven") => `<footer class="foot"><div class="wrap">
   <p>${esc(name)} is independent and not affiliated with Universal, NBCUniversal or Loews Hotels.<br>Prices are what the booking site showed at the latest check. Always confirm before you change a booking.</p>
-  <p><a href="/my">My rooms</a></p></div></footer>`;
+  <p><a href="/my">My rooms</a> &nbsp; <a href="/admin" style="color:var(--ink-3)">Admin</a></p></div></footer>`;

@@ -14,10 +14,14 @@ export function fmtDate(iso, format) {
 }
 const addDays = (iso, n) => { const t = new Date(iso + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 
-export function buildUrl(cfg, l) {
-  const code = (cfg.hotelCodes || {})[l.hotel];
+export const siteOf = (cfg, l) => (cfg.sources && l.src ? cfg.sources[l.src] : cfg) || {};
+
+export function buildUrl(all, l) {
+  const cfg = siteOf(all, l);
   if (!cfg.urlTemplate) throw new Error("Scraper not set up yet: paste a booking link on the Admin page.");
-  if (!code) throw new Error(`No hotel code saved for ${l.hotel} (Admin → Scraper setup).`);
+  const listing = !cfg.urlTemplate.includes("{hotel}");
+  const code = listing ? "" : (cfg.hotelCodes || {})[l.hotel];
+  if (!listing && !code) throw new Error(`No hotel code saved for ${l.hotel} (Admin → Scraper setup).`);
   const checkOut = addDays(l.checkIn, l.nights);
   const fill = {
     hotel: code, checkIn: fmtDate(l.checkIn, cfg.dateFormat), checkOut: fmtDate(checkOut, cfg.dateFormat),
@@ -182,4 +186,17 @@ export function summarize(rooms, roomFilter) {
       return priced[0] || null;
     },
   };
+}
+
+/* On a listing page every "room" card is really a hotel. Match card names to our hotels. */
+export function byHotel(rooms, hotels) {
+  const out = {};
+  for (const r of rooms) {
+    const h = hotels.find((x) => r.name.toLowerCase().includes(x.match));
+    if (!h) continue;
+    const price = r.price ?? null;
+    if (price == null) continue;
+    if (!out[h.id] || price < out[h.id].price) out[h.id] = { name: r.name, price, was: r.was, offers: r.offers };
+  }
+  return out;
 }

@@ -47,6 +47,15 @@ export async function store() {
 }
 
 /* ---------------- settings (editable on the Admin page) ---------------- */
+function emptySource() {
+  return {
+    enabled: true, urlTemplate: "", dateFormat: "YYYY-MM-DD", hotelCodes: {},
+    rateParams: { standard: {}, ap: {}, florida: {}, military: {} },
+    rateClickText: { standard: "", ap: "", florida: "", military: "" },
+  };
+}
+export const SOURCES = { universal: "Universal Orlando’s site", loews: "Loews Hotels’ site" };
+
 export const DEFAULT_SETTINGS = {
   siteName: "RateRaven",
   notice: "",
@@ -72,20 +81,38 @@ export const DEFAULT_SETTINGS = {
   extraBudget: 2000,        // max lookups in the afternoon and evening checks
   checks: { morning: true, afternoon: true, evening: true },
   // Scraper setup (filled in on the Admin page)
+  // Scraper setup (filled in on the Admin page). Two booking sites can be checked;
+  // the calendar shows whichever is cheaper and says where.
   scraper: {
-    urlTemplate: "",
-    dateFormat: "YYYY-MM-DD",
-    hotelCodes: {},
-    rateParams: { standard: {}, ap: {}, florida: {}, military: {} },
-    rateClickText: { standard: "", ap: "", florida: "", military: "" },
+    sources: {
+      universal: { ...emptySource(), startUrl: "https://www.universalorlando.com/hotels/en/us/listing" },
+      loews: { ...emptySource(), enabled: false, startUrl: "https://reservations.loewshotels.com/" },
+    },
     concurrency: 5,
   },
+
 };
 
 export async function getSettings() {
   const s = await (await store()).get("settings");
-  return deepMerge(structuredClone(DEFAULT_SETTINGS), s || {});
+  const out = deepMerge(structuredClone(DEFAULT_SETTINGS), s || {});
+  // Older single-site setups become the Loews site.
+  const sc = out.scraper;
+  if (sc.urlTemplate && !sc.sources.loews.urlTemplate) {
+    Object.assign(sc.sources.loews, { enabled: true, urlTemplate: sc.urlTemplate, dateFormat: sc.dateFormat || "YYYY-MM-DD", hotelCodes: sc.hotelCodes || {}, rateParams: sc.rateParams || {}, rateClickText: sc.rateClickText || {}, selectors: sc.selectors });
+  }
+  for (const k of ["urlTemplate", "dateFormat", "hotelCodes", "rateParams", "rateClickText", "selectors"]) delete sc[k];
+  return out;
 }
+
+// The booking sites that are switched on and set up.
+export const activeSources = (s) => Object.entries(s.scraper.sources || {}).filter(([, v]) => v.enabled !== false && v.urlTemplate).map(([id, v]) => [id, v]);
+// Which of those can search this hotel.
+// A site whose link has no {hotel} shows every hotel on one page ("listing" site).
+export const isListing = (src) => !!src.urlTemplate && !src.urlTemplate.includes("{hotel}");
+// A site only counts for a discount rate if we know how to ask it for that rate.
+export const supportsRate = (v, rate) => rate === "standard" || Object.keys(v.rateParams?.[rate] || {}).length > 0 || !!v.rateClickText?.[rate];
+export const sourcesFor = (s, hotel, rate = "standard") => activeSources(s).filter(([, v]) => (isListing(v) || v.hotelCodes?.[hotel]) && supportsRate(v, rate)).map(([id]) => id);
 export async function saveSettings(patch) {
   const cur = await getSettings();
   const next = deepMerge(cur, patch);
