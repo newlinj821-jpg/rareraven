@@ -1,0 +1,97 @@
+name: Price check
+
+on:
+  schedule:
+    - cron: "10 12,13 * * *"   # morning
+    - cron: "10 18,19 * * *"   # afternoon
+    - cron: "10 0,1 * * *"     # evening
+  push:
+    paths: ["rateraven.zip", ".github/workflows/morning-check.yml"]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe = test one search, daily = full check now"
+        type: choice
+        options: [probe, daily]
+        default: probe
+      hotel:
+        description: "Probe only: hotel id (portofino, hardrock, royalpacific, helios, sapphire, aventura, cabana, stellanova, terraluna, surfside, dockside)"
+        default: portofino
+      date:
+        description: "Probe only: check-in date YYYY-MM-DD (blank = 30 days from now)"
+        default: ""
+      rate:
+        description: "Probe only: standard, ap, florida, military"
+        default: standard
+      adults:
+        description: "Probe only: adults"
+        default: "2"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: price-check
+  cancel-in-progress: false
+
+jobs:
+  unpack:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack rateraven.zip
+        run: |
+          if [ ! -f rateraven.zip ]; then echo "No zip to unpack."; exit 0; fi
+          unzip -oq rateraven.zip -d /tmp/rr
+          SRC=/tmp/rr; [ -d /tmp/rr/rateraven ] && SRC=/tmp/rr/rateraven
+          rm -rf "$SRC/.github"   # GitHub won't let this job change workflow files; yours is already here
+          cp -rf "$SRC/." .
+          git rm -q --cached rateraven.zip && rm -f rateraven.zip
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Unpack RateRaven" && git push
+          echo "ALL DONE"
+
+  check:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    defaults:
+      run:
+        working-directory: scraper
+    env:
+      SITE_URL: ${{ secrets.SITE_URL }}
+      SCRAPER_SECRET: ${{ secrets.SCRAPER_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Test one search
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'probe'
+        run: node run.mjs --probe hotel=${{ inputs.hotel }} date=${{ inputs.date }} rate=${{ inputs.rate }} adults=${{ inputs.adults }}
+
+      - name: Full price check
+        if: github.event_name == 'schedule' || inputs.mode == 'daily'
+        env:
+          FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' }}
+        run: node run.mjs
+
+      - name: Save test screenshot
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.mode == 'probe'
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-output
+          path: scraper/probe-output
+          if-no-files-found: ignore
+
