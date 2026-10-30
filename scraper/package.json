@@ -1,0 +1,14 @@
+{
+  "name": "rateraven-scraper",
+  "private": true,
+  "type": "module",
+  "description": "Checks hotel prices every morning and sends them to your RateRaven site.",
+  "scripts": {
+    "daily": "node run.mjs",
+    "probe": "node run.mjs --probe",
+    "test": "node test/selftest.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.48.2"
+  }
+}

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>My rooms — RateRaven</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0d3b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RateRaven">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="preload" href="/fonts/AlfaSlabOne-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="/app.css">
+<style>
+  .head { padding: clamp(16px, 4vw, 40px) 0 22px; display: flex; flex-wrap: wrap; gap: 14px 30px; align-items: end; justify-content: space-between; }
+  .head h1 { font-size: clamp(36px, 5.5vw, 64px); }
+  .saved { display: flex; align-items: baseline; gap: 10px; }
+  .saved b { font-family: var(--slab); font-weight: 400; font-size: clamp(30px, 4vw, 44px); }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+  .rooms { display: grid; gap: 14px; }
+  .room { padding: 20px 22px; border-left-width: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; }
+  .room h3 { font-size: 21px; }
+  .room .when { color: var(--ink-2); }
+  .room .now { text-align: right; }
+  .room .now b { display: block; font-family: var(--slab); font-weight: 400; font-size: 36px; line-height: 1; }
+  .room .now small { color: var(--ink-3); font-size: 13px; }
+  .room.drop { border-left-color: var(--palm); }
+  .room.drop .now b { color: var(--palm); }
+  .room .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-3); font-size: 14px; }
+  .room .meta .good { color: var(--palm); font-weight: 700; }
+  .room .meta .warn { color: var(--flamingo); font-weight: 700; }
+  .room svg.spark { grid-column: 1 / -1; width: 100%; height: 64px; margin-top: 4px; }
+  .room .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .room.done { opacity: .55; }
+  .room .detail { grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 12px; }
+  .room .detail table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .room .detail td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .room .detail td:last-child { text-align: right; font-weight: 700; white-space: nowrap; padding-left: 12px; }
+  .tag { display: inline-block; font-size: 13.5px; font-weight: 700; padding: 1px 7px; border: 1.5px solid var(--ink-3); border-radius: 3px; margin: 3px 4px 0 0; }
+  .side { display: grid; gap: 16px; position: sticky; top: 16px; }
+  .side h3 { margin-bottom: 10px; }
+  .side form { display: grid; gap: 12px; }
+  .side .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .empty { padding: 34px 26px; display: grid; gap: 12px; justify-items: start; }
+  .gate { max-width: 560px; margin: 40px auto; padding: 30px; display: grid; gap: 14px; }
+  .linkbox { display: flex; gap: 8px; }
+  .linkbox input { font-size: 13px; }
+  .edit { grid-column: 1 / -1; }
+  .pass b { font-family: var(--slab); font-weight: 400; font-size: 30px; }
+</style>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap" id="main"><p class="muted" style="padding:40px 0">Loading your rooms…</p></main>
+<div id="ftr"></div>
+<script type="module">
+import { $, $$, esc, money, api, getConfig, savedToken, dayName, daysBetween, addDays, ago, toast, copy, randomTopic, header, footer } from "/common.js";
+$("#hdr").innerHTML = header("my");
+const cfg = await getConfig();
+$("#ftr").innerHTML = footer(cfg.siteName);
+const H = Object.fromEntries(cfg.hotels.map((h) => [h.id, h]));
+const R = Object.fromEntries(cfg.rateTypes.map((r) => [r.id, r.name]));
+const today = cfg.today;
+
+// Take the link from the address bar, remember it here, then hide it from the address bar.
+const qs = new URLSearchParams(location.search);
+if (qs.get("k")) savedToken.set(qs.get("k"));
+let k = savedToken.get();
+// Keep the link in the address bar so "Add to Home Screen" on iPhone opens straight to your rooms.
+if (k && !qs.get("k")) history.replaceState(null, "", "/my?k=" + k);
+let key, open = null;
+
+function gate(msg = "") {
+  $("#main").innerHTML = `<div class="panel gate">
+    <h1 style="font-size:40px">My rooms</h1>
+    <p>Open the private link you saved when you started watching. It looks like <span class="muted">${location.origin}/my?k=…</span></p>
+    <form id="paste" style="display:grid;gap:10px"><label class="f">Paste your private link<input name="l" autocomplete="off" spellcheck="false"></label>
+      <div class="row" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn">Open my rooms</button><a class="btn ghost" href="/#watch">Watch a room</a></div>
+      <span class="err" role="alert">${esc(msg)}</span></form>
+    ${cfg.email ? `<form id="lost" style="display:grid;gap:10px;border-top:1px solid var(--line);padding-top:16px"><label class="f">Lost it? We'll email a fresh link<input type="email" name="e" placeholder="The email on your alerts"></label><button class="btn ghost" style="justify-self:start">Email me a new link</button><span class="muted" id="lostMsg" role="status"></span></form>` : ""}
+  </div>`;
+  $("#paste").onsubmit = (e) => {
+    e.preventDefault();
+    const v = e.target.l.value.trim();
+    const m = v.match(/k=([\w-]+\.[\w-]+)/) || v.match(/^([\w-]+\.[\w-]+)$/);
+    if (!m) { e.target.querySelector(".err").textContent = "That doesn't look like a RateRaven link."; return; }
+    savedToken.set(m[1]); k = m[1]; load();
+  };
+  $("#lost")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const r = await api("/api/send-link", { method: "POST", body: { email: e.target.e.value } }).catch((x) => ({ message: x.message }));
+    $("#lostMsg").textContent = r.message;
+  });
+}
+
+async function load() {
+  if (!k) return gate();
+  try { key = (await api(`/api/key?k=${encodeURIComponent(k)}`)).key; }
+  catch (e) { savedToken.clear(); k = ""; return gate(e.message); }
+  draw();
+}
+
+function spark(w) {
+  const pts = (w.history || []).slice(-60);
+  if (pts.length < 2) return "";
+  const vals = pts.map((p) => p.p).concat(w.paid ? [w.paid] : []);
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  const W = 600, Ht = 64, pad = 6;
+  const x = (i) => (i / (pts.length - 1)) * W;
+  const y = (v) => pad + (1 - (v - lo) / span) * (Ht - pad * 2);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.p).toFixed(1)}`).join("");
+  const paid = w.paid ? `<line x1="0" x2="${W}" y1="${y(w.paid)}" y2="${y(w.paid)}" stroke="var(--plum)" stroke-dasharray="4 5" stroke-width="1.5"/><text x="${W - 4}" y="${y(w.paid) - 5}" text-anchor="end" font-size="12" font-weight="600" fill="var(--plum)" stroke="var(--paper)" stroke-width="4" paint-order="stroke">you paid ${money(w.paid)}</text>` : "";
+  const last = pts[pts.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${Ht}" preserveAspectRatio="none" role="img" aria-label="Price over the last ${pts.length} mornings, from ${money(pts[0].p)} to ${money(last.p)}">
+    ${paid}<path d="${d}" fill="none" stroke="var(--lagoon)" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    <circle cx="${x(pts.length - 1)}" cy="${y(last.p)}" r="4" fill="var(--lagoon)"/></svg>`;
+}
+
+function roomCard(w) {
+  const done = w.checkIn < today;
+  const below = w.paid && w.lastPrice != null && w.lastPrice < w.paid;
+  const save = below ? (w.paid - w.lastPrice) * w.nights * 1.125 : 0;
+  const dl = w.cancelBy || addDays(w.checkIn, -6);
+  const left = daysBetween(today, dl);
+  const status = w.paused ? "Paused" : done ? "Trip done" : w.status === "soldout" ? "Sold out right now" : w.lastChecked ? `Checked ${w.lastChecked === today ? "today" : dayName(w.lastChecked)}` : "Checked at 7:10am, 1:10pm and 7:10pm";
+  return `<article class="panel room${below ? " drop" : ""}${done ? " done" : ""}" data-id="${w.id}">
+    <div><h3>${esc(H[w.hotel]?.name || w.hotel)}</h3>
+      <p class="when">${dayName(w.checkIn, { weekday: "short", month: "long", day: "numeric" })}, ${w.nights} night${w.nights > 1 ? "s" : ""}, ${esc(R[w.rate] || w.rate)}, ${w.adults} adult${w.adults > 1 ? "s" : ""}${w.roomFilter ? `, rooms with “${esc(w.roomFilter)}”` : ""}</p></div>
+    <div class="now">${w.lastPrice != null ? `<b class="tnum">${money(w.lastPrice)}</b><small>per night now</small>` : `<small>${w.status === "soldout" ? "Sold out" : "No price yet"}</small>`}</div>
+    <div class="meta">
+      ${below ? `<span class="good">${money(w.paid - w.lastPrice)} under what you paid, about ${money(save)} for the stay with tax</span>` : w.paid ? `<span>You paid ${money(w.paid)}</span>` : ""}
+      ${w.low != null ? `<span>Lowest seen ${money(w.low)}</span>` : ""}
+      ${w.lastRoom ? `<span>${esc(w.lastRoom)}</span>` : ""}
+      <span>${status}</span>
+      ${!done && left >= 0 && left <= 7 ? `<span class="warn">Free changes until ${dayName(dl)}${left === 0 ? " (today)" : ""}</span>` : ""}
+      ${!done && left < 0 ? `<span class="warn">Past the free-cancel deadline. Changing may cost a night.</span>` : ""}
+    </div>
+    ${(w.lastOffers || []).length ? `<div class="meta">${w.lastOffers.map((o) => `<span class="tag">${esc(o)}</span>`).join("")}</div>` : ""}
+    ${spark(w)}
+    <div class="acts">
+      <button class="btn ghost small" data-act="rooms">${open === w.id ? "Hide rooms" : "Every room and price"}</button>
+      <button class="btn ghost small" data-act="edit">Edit</button>
+      ${done ? "" : `<button class="btn ghost small" data-act="ics">Add cancel deadline to my calendar</button>`}
+      ${done ? "" : `<button class="btn ghost small" data-act="pause">${w.paused ? "Resume" : "Pause"}</button>`}
+      <button class="btn ghost small" data-act="del">Remove</button>
+    </div>
+    <div class="detail" ${open === w.id ? "" : "hidden"}></div>
+  </article>`;
+}
+
+function draw() {
+  const ws = (key.watches || []).slice().sort((a, b) => (a.checkIn < today) - (b.checkIn < today) || a.checkIn.localeCompare(b.checkIn));
+  const savedNow = ws.filter((w) => w.checkIn >= today && w.paid && w.lastPrice != null && w.lastPrice < w.paid).reduce((a, w) => a + (w.paid - w.lastPrice) * w.nights * 1.125, 0);
+  const plan = key.plan;
+  const c = key.channels || {};
+  const active = ws.filter((w) => w.checkIn >= today).length;
+  const paidBack = qs.get("paid");
+
+  $("#main").innerHTML = `
+    <section class="head">
+      <div><h1>My rooms</h1><p class="muted" style="margin-top:6px">${active} of ${plan.watchLimit} rooms watched${plan.hasPass ? `, pass until ${new Date(key.passUntil).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}.</p></div>
+      ${savedNow > 0 ? `<div class="saved"><b class="tnum">${money(savedNow)}</b><span>you could save by<br>re-booking today, with tax</span></div>` : ""}
+    </section>
+    ${paidBack ? `<p class="note" style="margin-bottom:16px">Thanks! Your pass switches on within a minute. Refresh if it hasn't yet.</p>` : ""}
+    <div class="layout">
+      <div class="rooms">${ws.map(roomCard).join("") || `<div class="panel empty"><h3>No rooms yet</h3><p>Add the room you booked and the raven checks it every morning.</p><a class="btn lagoon" href="/#watch">Watch a room</a></div>`}
+        ${ws.length && active < plan.watchLimit ? `<a class="btn lagoon" style="justify-self:start" href="/#watch">Watch another room</a>` : ""}
+      </div>
+      <aside class="side">
+        ${key.sales && !plan.hasPass ? `<div class="panel pad pass"><h3>Get a pass</h3><p><b>${money(cfg.sales.price / 100)}</b> once, for ${cfg.sales.days} days.</p>
+          <p class="muted" style="margin:6px 0 14px">Watch up to ${cfg.sales.passLimit} rooms${cfg.sales.freeWindowDays ? ", checked from the day you book, not just the last " + cfg.sales.freeWindowDays + " days" : ""}. Nothing renews.</p>
+          <button class="btn" id="buy">Get a pass</button></div>` : ""}
+        <div class="panel pad">
+          <h3>Alerts</h3>
+          <form id="alerts">
+            <label class="f">ntfy phone topic<input name="ntfy" value="${esc(c.ntfy || "")}" placeholder="${randomTopic()}" spellcheck="false"></label>
+            ${key.emailAvailable ? `<label class="f">Email<input type="email" name="email" value="${esc(c.email || "")}"></label>` : ""}
+            <label class="f">Discord webhook<input name="discord" value="${esc(c.discord || "")}" spellcheck="false"></label>
+            <label style="display:flex;gap:10px;align-items:center;font-weight:550"><input type="checkbox" name="daily" ${key.daily ? "checked" : ""} style="width:20px;min-height:20px"> Morning summary of every room</label>
+            <p class="muted" style="font-size:14px">Price drops are sent after every check, morning, afternoon and evening.</p>
+            <div class="row"><button class="btn small">Save alerts</button><button class="btn ghost small" type="button" id="test">Send a test</button></div>
+            <span class="err" role="alert" id="aErr"></span>
+          </form>
+          ${key.lastSend ? `<p class="muted" style="margin-top:12px;font-size:14px">Last message ${ago(key.lastSend.at)}: ${Object.entries(key.lastSend.res || {}).map(([a, b]) => `${a} ${b === "ok" ? "delivered" : "failed"}`).join(", ")}</p>` : ""}
+        </div>
+        ${/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone ? `<div class="panel pad"><h3>Put it on your iPhone</h3><p style="margin-top:6px">In Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>. RateRaven opens straight to your rooms, like an app.</p></div>` : ""}
+        <div class="panel pad">
+          <h3>Your private link</h3>
+          <p class="muted" style="margin-bottom:10px">Anyone with this link can see and change your rooms. Keep it to yourself.</p>
+          <div class="linkbox"><input readonly id="mylink" value="${location.origin}/my?k=${esc(k)}" aria-label="Your private link"><button class="btn small" id="cp">Copy</button></div>
+          <p style="margin-top:12px"><button class="link-btn" id="forget">Sign out on this device</button></p>
+        </div>
+      </aside>
+    </div>`;
+
+  $("#cp").onclick = () => copy($("#mylink").value);
+  $("#forget").onclick = () => { savedToken.clear(); k = ""; gate(); };
+  $("#buy")?.addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    try { location.href = (await api("/api/checkout", { method: "POST", body: { k } })).url; }
+    catch (x) { toast(x.message); e.target.disabled = false; }
+  });
+  $("#alerts").onsubmit = async (e) => {
+    e.preventDefault();
+    const v = Object.fromEntries(new FormData(e.target));
+    try { key = (await api("/api/key", { method: "PATCH", body: { k, channels: { ntfy: v.ntfy, email: v.email, discord: v.discord }, daily: !!v.daily } })).key; toast("Alerts saved"); draw(); }
+    catch (x) { $("#aErr").textContent = x.message; }
+  };
+  $("#test").onclick = async () => {
+    try {
+      const r = await api("/api/test-alert", { method: "POST", body: { k } });
+      toast(Object.entries(r.results).map(([a, b]) => `${a}: ${b === "ok" ? "sent" : b}`).join(", "));
+    } catch (x) { $("#aErr").textContent = x.message; }
+  };
+  $$(".room").forEach((el) => (el.onclick = (e) => act(e, el)));
+  if (open) loadDetail(open);
+}
+
+async function act(e, el) {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const id = el.dataset.id, w = key.watches.find((x) => x.id === id);
+  if (b.dataset.act === "rooms") { open = open === id ? null : id; draw(); }
+  if (b.dataset.act === "pause") { key = (await api("/api/watch", { method: "PATCH", body: { k, id, paused: !w.paused } })).key; draw(); }
+  if (b.dataset.act === "del") {
+    if (b.dataset.sure) { key = (await api("/api/watch", { method: "DELETE", body: { k, id } })).key; toast("Removed"); draw(); }
+    else { b.dataset.sure = 1; b.textContent = "Tap again to remove"; }
+  }
+  if (b.dataset.act === "edit") editForm(el, w);
+  if (b.dataset.act === "ics") {
+    const dl = (w.cancelBy || addDays(w.checkIn, -6)).replace(/-/g, "");
+    const end = addDays(w.cancelBy || addDays(w.checkIn, -6), 1).replace(/-/g, "");
+    const name = H[w.hotel]?.name || w.hotel;
+    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RateRaven//EN", "BEGIN:VEVENT", `UID:${w.id}-${dl}@rateraven`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`,
+      `DTSTART;VALUE=DATE:${dl}`, `DTEND;VALUE=DATE:${end}`, `SUMMARY:Last day to change ${name} for free`,
+      `DESCRIPTION:Check-in ${w.checkIn}. Confirm the exact deadline on your reservation.`, "BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:Hotel free-cancel deadline tomorrow", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    a.download = `cancel-deadline-${w.hotel}.ics`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+}
+
+async function loadDetail(id) {
+  const box = $(`.room[data-id="${id}"] .detail`);
+  if (!box) return;
+  box.innerHTML = `<p class="muted">Loading…</p>`;
+  const d = await api(`/api/watch?k=${encodeURIComponent(k)}&id=${id}`).catch(() => null);
+  if (!d?.rooms?.length) { box.innerHTML = `<p class="muted">Room details show up after the first morning check.</p>`; return; }
+  box.innerHTML = `<table><tbody>${d.rooms.slice().sort((a, b) => (a.price ?? 1e9) - (b.price ?? 1e9)).map((r) => `<tr><td>${esc(r.name)}${r.was ? ` <span class="muted">was <s>${money(r.was)}</s></span>` : ""}<br>${(r.offers || []).map((o) => `<span class="tag">${esc(o)}</span>`).join("")}</td><td class="tnum">${r.price != null ? money(r.price) : money(r.total) + " total"}</td></tr>`).join("")}</tbody></table>
+    <p class="muted" style="margin-top:10px;font-size:14px">Checked ${ago(d.checked)}.${d.bookingUrl ? ` <a href="${esc(d.bookingUrl)}" target="_blank" rel="noopener noreferrer">Open this search on the booking site</a>` : ""}</p>`;
+}
+
+function editForm(el, w) {
+  const box = document.createElement("form");
+  box.className = "edit grid-form";
+  box.innerHTML = `
+    <label class="f">Check-in<input type="date" name="checkIn" value="${w.checkIn}" min="${today}"></label>
+    <label class="f">Nights<input type="number" name="nights" value="${w.nights}" min="1" max="21"></label>
+    <label class="f">Rate<select name="rate">${cfg.rateTypes.map((r) => `<option value="${r.id}" ${r.id === w.rate ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>
+    <label class="f">Adults<input type="number" name="adults" value="${w.adults}" min="1" max="6"></label>
+    <label class="f">You paid per night<input name="paid" value="${w.paid ?? ""}" inputmode="decimal"></label>
+    <label class="f">Alert me below<input name="target" value="${w.target ?? ""}" inputmode="decimal"></label>
+    <label class="f">Room name has<input name="roomFilter" value="${esc(w.roomFilter || "")}"></label>
+    <label class="f">Free-cancel deadline<input type="date" name="cancelBy" value="${w.cancelBy || ""}"></label>
+    <div class="span-all" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn small">Save changes</button><button class="btn ghost small" type="button" data-x>Cancel</button><span class="err" role="alert"></span></div>`;
+  el.querySelector(".acts").replaceWith(box);
+  box.querySelector("[data-x]").onclick = draw;
+  box.querySelector('[name="paid"]').focus();
+  box.onsubmit = async (e) => {
+    e.preventDefault();
+    const v = Object.fromEntries(new FormData(box));
+    try { key = (await api("/api/watch", { method: "PATCH", body: { k, id: w.id, ...v, nights: Number(v.nights), adults: Number(v.adults) } })).key; toast("Changes saved"); draw(); }
+    catch (x) { box.querySelector(".err").textContent = x.message; }
+  };
+}
+load();
+</script>
+</body>
+</html>

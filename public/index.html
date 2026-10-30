@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RateRaven: Universal Orlando hotel rates, checked three times a day</title>
+<meta name="description" content="Every on-site Loews hotel at Universal Orlando, every night for the next year, with Standard, Annual Passholder, Florida resident and Military rates. Plan the cheapest stay, find the Express trick, and get a message when your booked room drops.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0d3b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RateRaven">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="preload" href="/fonts/AlfaSlabOne-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="/app.css">
+<style>
+  /* ---------- intro ---------- */
+  .intro { padding: clamp(22px, 5vw, 56px) 0 26px; max-width: 880px; }
+  .intro h1 { max-width: 17ch; }
+  .intro .lede { margin-top: 16px; }
+  .checked { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; font-weight: 700; }
+  .checked svg { width: 22px; height: 22px; flex: none; }
+
+  .jumps { display: grid; gap: 0; margin-top: 30px; max-width: 620px; border-top: 2px solid var(--rule); }
+  .jumps a { display: grid; gap: 2px; padding: 14px 0 14px 18px; border-bottom: 1px dotted var(--ink-3); text-decoration: none; position: relative; }
+  .jumps a::before { content: ""; position: absolute; left: 0; top: 18px; width: 8px; height: 8px; background: var(--flamingo); border-radius: 50%; }
+  .jumps a b { font-size: 19px; }
+  .jumps a span { color: var(--ink-2); }
+  .jumps a:hover b { text-decoration: underline; text-decoration-color: var(--flamingo); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .top-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 28px 40px; align-items: start; padding-bottom: 30px; }
+  .top-grid .intro { padding-bottom: 0; }
+  @media (max-width: 980px) { .top-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- the Raven's Report ---------- */
+  .report { margin-top: clamp(22px, 5vw, 56px); overflow: hidden; }
+  .report > header { background: var(--ink); color: var(--card); padding: 14px 20px 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .report > header h2 { font-size: 24px; }
+  .report > header span { font-size: 15px; opacity: .85; }
+  .report .r-sec { padding: 14px 20px; border-top: 1px dotted var(--ink-3); }
+  .report .r-sec:first-of-type { border-top: 0; }
+  .report .r-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .report .r-big b { font-family: var(--slab); font-weight: 400; font-size: 44px; line-height: 1; color: var(--palm); }
+  .report .r-big span { font-weight: 700; }
+  .report h3 { font-size: 15px; color: var(--ink-3); margin-bottom: 6px; }
+  .report .tariff li { padding: 5px 0; border: 0; }
+  .report .line { cursor: pointer; }
+  .report .line:hover .nm { text-decoration: underline; text-decoration-color: var(--flamingo); text-decoration-thickness: 2px; }
+  .report .line .pr { font-size: 19px; }
+  .report .line s { font-family: var(--text); font-size: 15px; color: var(--ink-3); margin-right: 4px; }
+  .report .when { font-weight: 400; color: var(--ink-2); }
+  .report .tiers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+  .report .tiers div { font-size: 15px; }
+  .report .tiers b { display: block; font-family: var(--slab); font-weight: 400; font-size: 21px; }
+
+  /* ---------- the rate card ---------- */
+  .card { overflow: hidden; }
+  .card-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 20px 22px; border-bottom: 2px solid var(--rule); }
+  .ctl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; min-width: 0; }
+  .ctl > b { width: 132px; flex: none; font-size: 15px; }
+  .ctl > div { min-width: 0; }
+  .ctl .hint { font-size: 15px; color: var(--ink-3); }
+  .rates .chip { font-size: 15.5px; padding: 7px 12px; }
+  .rates .chip.always { background: var(--wash); border-style: dashed; cursor: default; color: var(--ink-2); }
+  .sep { display: inline-block; width: 2px; height: 22px; background: var(--hair); vertical-align: middle; margin: 0 4px; }
+  @media (max-width: 700px) {
+    .ctl > b { width: 100%; }
+    .hotels-ctl .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -22px; padding: 2px 22px 6px; scrollbar-width: none; }
+    .hotels-ctl .chip { flex: none; }
+  }
+
+  .months { display: flex; overflow-x: auto; border-bottom: 2px solid var(--rule); scrollbar-width: thin; }
+  .months button {
+    appearance: none; flex: 1 0 86px; background: var(--card); color: var(--ink); cursor: pointer; text-align: left;
+    border: 0; border-right: 1px solid var(--hair); padding: 10px 12px 12px; font: inherit; border-bottom: 4px solid transparent;
+  }
+  .months button:last-child { border-right: 0; }
+  .months button span { display: block; font-size: 14px; font-weight: 700; color: var(--ink-3); }
+  .months button b { font-family: var(--slab); font-weight: 400; font-size: 21px; }
+  .months button[aria-pressed="true"] { background: var(--wash); border-bottom-color: var(--flamingo); }
+  .months button[aria-pressed="true"] span { color: var(--ink); }
+
+  .cal { padding: 18px 22px 22px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .cal-nav { display: flex; gap: 6px; }
+  .cal-nav .btn { width: 44px; height: 44px; padding: 0; font-size: 22px; }
+  .dow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); font-size: 14px; font-weight: 700; color: var(--ink-3); padding-bottom: 6px; }
+  .dow div { padding-left: 8px; }
+  .weeks { border-top: 2px solid var(--rule); }
+  .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--hair); }
+  .cell {
+    appearance: none; font: inherit; color: inherit; text-align: left; background: transparent; cursor: pointer;
+    border: 0; border-right: 1px solid var(--hair); min-height: 96px; padding: 8px 9px 10px; display: flex; flex-direction: column; gap: 2px; position: relative;
+  }
+  .cell:last-child { border-right: 0; }
+  .cell:hover:not([disabled]) { background: var(--wash); }
+  .cell[aria-pressed="true"] { background: var(--wash); box-shadow: inset 0 -4px 0 var(--flamingo); }
+  .cell[disabled] { cursor: default; }
+  .cell .d { font-size: 14px; font-weight: 700; color: var(--ink-3); display: flex; gap: 6px; justify-content: space-between; }
+  .cell .p { font-family: var(--slab); font-size: clamp(17px, 2.1vw, 26px); line-height: 1.05; margin-top: auto; align-self: flex-start; }
+  .cell .p.cheap { color: var(--palm); }
+  .cell .h { font-size: 13.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell .r { font-size: 12.5px; color: var(--ink-3); }
+  .cell .gone { margin-top: auto; font-size: 13px; color: var(--ink-3); }
+  .mv { font-size: 13px; font-weight: 700; }
+  .mv.down { color: var(--palm); } .mv.up { color: var(--flamingo); }
+  .cell .multi { margin-top: auto; display: grid; gap: 2px; font-size: 13px; }
+  .cell .multi span { display: flex; justify-content: space-between; gap: 6px; }
+  .cell .multi b { font-family: var(--slab); font-weight: 400; font-size: 15px; }
+  @media (max-width: 640px) {
+    .cal { padding: 14px 10px 16px; }
+    .cell { min-height: 62px; padding: 5px 4px 6px; }
+    .cell .h, .cell .r, .cell .d .mv, .cell .multi em { display: none; }
+    .cell .p { font-size: 15px; }
+    .cell .multi { font-size: 11px; } .cell .multi b { font-size: 12px; }
+    .dow div { padding-left: 4px; font-size: 12px; }
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 14px; font-size: 15px; color: var(--ink-2); }
+  .cal-empty { padding: 34px 6px; display: grid; gap: 8px; }
+
+  /* the tariff list under a week */
+  .night { grid-column: 1 / -1; background: var(--wash); border-bottom: 2px solid var(--rule); padding: 18px clamp(12px, 3vw, 26px) 20px; }
+  .night-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tariff { list-style: none; margin: 0; padding: 0; }
+  .tariff li { padding: 10px 0; border-bottom: 1px dotted var(--ink-3); }
+  .tariff li:last-child { border-bottom: 0; }
+  .line { display: flex; align-items: baseline; gap: 8px; }
+  .line .nm { font-weight: 700; }
+  .line .dots { flex: 1; border-bottom: 2.5px dotted var(--ink-3); transform: translateY(-5px); min-width: 20px; }
+  .line .pr { font-family: var(--slab); font-size: 24px; white-space: nowrap; }
+  .sub { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 15px; color: var(--ink-2); margin-top: 3px; align-items: center; }
+  .tag { font-size: 13.5px; font-weight: 700; padding: 1px 7px; border: 1.5px solid var(--ink-3); border-radius: 3px; color: var(--ink); background: var(--card); }
+  .tag.x { background: var(--sun); border-color: #0d3b45; color: #0d3b45; }
+  .rates-mini { font-size: 14px; color: var(--ink-3); }
+
+  /* ---------- sections below the card ---------- */
+  .section { margin-top: clamp(56px, 8vw, 100px); }
+  .section > header { max-width: 760px; margin-bottom: 22px; }
+  .section > header p { margin-top: 10px; }
+
+  .plan-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; align-items: end; padding: 20px 22px; border-bottom: 2px solid var(--rule); }
+  .plan-out { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .plan-out > div { padding: 22px; }
+  .plan-out > div + div { border-left: 2px solid var(--rule); }
+  @media (max-width: 860px) { .plan-out { grid-template-columns: 1fr; } .plan-out > div + div { border-left: 0; border-top: 2px solid var(--rule); } }
+  .plan-out h3 { margin-bottom: 8px; }
+  .trick { margin-top: 22px; padding-top: 18px; border-top: 1px dotted var(--ink-3); }
+  .trick:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .big { font-family: var(--slab); font-size: clamp(26px, 3vw, 34px); line-height: 1.1; }
+  .small { font-size: 15px; color: var(--ink-2); }
+
+  .watch { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 36px; align-items: start; }
+  @media (max-width: 900px) { .watch { grid-template-columns: 1fr; } }
+  .steps { list-style: none; margin: 24px 0 0; padding: 0; counter-reset: s; display: grid; gap: 18px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 42px 1fr; gap: 12px; }
+  .steps li::before { content: counter(s); font-family: var(--slab); font-size: 32px; line-height: 1; color: var(--flamingo); }
+  .steps b { display: block; font-size: 18px; }
+  .steps span { color: var(--ink-2); }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .alerts { margin-top: 22px; padding-top: 18px; border-top: 2px solid var(--rule); display: grid; gap: 14px; }
+  .alerts legend { font-weight: 700; font-size: 19px; padding: 0; margin-bottom: 4px; }
+  details.more { margin-top: 16px; }
+  details.more summary { cursor: pointer; font-weight: 700; }
+  details.more[open] summary { margin-bottom: 12px; }
+  .form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 22px; }
+  .linkbox { display: flex; gap: 8px; }
+  .linkbox input { font-size: 15px; }
+  .done { display: grid; gap: 14px; }
+
+  .tipjar { display: grid; grid-template-columns: auto 1fr; gap: 18px 24px; align-items: center; }
+  .tipjar svg { width: 72px; height: 72px; }
+  .tip-amts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .tip-amts input { width: 110px; }
+  @media (max-width: 560px) { .tipjar { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap">
+  <div class="top-grid">
+  <section class="intro" aria-labelledby="h1">
+    <h1 id="h1">Universal hotel rates, checked three times a day.</h1>
+    <p class="lede">All eleven on-site Loews hotels, every night for the next year, at 7am, 1pm and 7pm Central. Tick the discounts you qualify for and see your best price each night. Already booked? We'll watch your room and tell you when it drops.</p>
+    <p class="checked"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--palm)"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="checked">Loading prices…</span></p>
+    <nav class="jumps" aria-label="What you can do here">
+      <a href="#calendar"><b>See your best rate every night</b><span>Standard, Passholder, Florida resident and Military, side by side for 11 hotels.</span></a>
+      <a href="#plan"><b>Plan the cheapest stay</b><span>Ranks every hotel with tax, finds a cheaper split stay, and the cheapest night that comes with Express.</span></a>
+      <a href="#watch"><b>Watch a room you booked</b><span>A message when it drops, when a sold-out room comes back, and before your free-cancel deadline.</span></a>
+    </nav>
+  </section>
+  <aside class="report panel" id="report" aria-labelledby="rt" hidden></aside>
+  </div>
+  <p class="note" id="notice" hidden style="margin-bottom:18px"></p>
+
+  <section class="panel card" id="calendar" aria-label="Rate calendar">
+    <div class="card-controls">
+      <div class="ctl rates"><b id="l-r">Rates I can get</b>
+        <div class="chips" id="rates" role="group" aria-labelledby="l-r"></div></div>
+      <div class="ctl"><b id="l-a">Adults</b><div class="seg" id="adults" role="group" aria-labelledby="l-a"></div><span class="hint">Kids don't change the price.</span></div>
+      <div class="ctl hotels-ctl"><b id="l-h">Hotels</b><div class="chips" id="hotels" role="group" aria-labelledby="l-h"></div></div>
+    </div>
+    <div class="months" id="months" role="group" aria-label="Month"></div>
+    <div class="cal">
+      <div class="cal-head"><h2 id="monthTitle">&nbsp;</h2>
+        <div class="cal-nav"><button class="btn ghost" id="prev" aria-label="Previous month">‹</button><button class="btn ghost" id="next" aria-label="Next month">›</button></div></div>
+      <div class="dow" aria-hidden="true"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+      <div class="weeks" id="weeks"></div>
+      <div class="legend"><span><span class="hl slab">$105</span> lowest night of the month</span><span><b style="color:var(--palm)" class="slab">$112</b> cheapest third</span><span><b class="mv down">▼$12</b> dropped since the last check</span><span>Per night, before tax, 1-night stay.</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="plan" aria-labelledby="pt">
+    <header><h2 id="pt">Plan the cheapest stay</h2>
+      <p class="lede">Enter your dates. We'll rank every hotel by total cost, check whether splitting the trip between two hotels saves money, and find the cheapest way to get Express Unlimited.</p></header>
+    <div class="panel">
+      <form class="plan-form" id="pform">
+        <label class="f">Arrive<input type="date" name="a" required></label>
+        <label class="f">Leave<input type="date" name="b" required></label>
+        <label class="f">Adults<select name="ad"><option value="2">1–2</option><option value="3">3</option><option value="4">4</option></select></label>
+        <button class="btn">Plan my stay</button>
+      </form>
+      <div id="pout"><p class="pad muted">Uses the rates you ticked above.</p></div>
+    </div>
+  </section>
+
+  <section class="section watch" id="watch" aria-labelledby="wt">
+    <div>
+      <h2 id="wt">Booked already? We'll watch your room.</h2>
+      <p class="lede" style="margin-top:12px">Rates often fall after you book. When yours does, you can usually change the reservation to the lower price.</p>
+      <ol class="steps">
+        <li><div><b>Tell us what you booked</b><span>Hotel, dates, rate and what you paid per night.</span></div></li>
+        <li><div><b>We check it three times a day</b><span>7:10am, 1:10pm and 7:10pm Central, until you check in. Sold out? We'll tell you if it opens up.</span></div></li>
+        <li><div><b>Change your booking for less</b><span>You get a message with the savings, tax included, and a reminder before your free-cancel deadline.</span></div></li>
+      </ol>
+      <div id="pricing" style="margin-top:26px"></div>
+    </div>
+    <div class="panel pad">
+      <form id="wform" novalidate>
+        <h3>Watch a room</h3>
+        <p class="muted" id="haveLink" hidden style="margin-top:4px"></p>
+        <div class="grid-form" style="margin-top:16px">
+          <label class="f span-all">Hotel<select name="hotel" id="wHotel"></select></label>
+          <label class="f">Check-in<input type="date" name="checkIn" required></label>
+          <label class="f">Nights<input type="number" name="nights" min="1" max="21" value="2" inputmode="numeric"></label>
+          <label class="f">Rate you booked<select name="rate" id="wRate"></select></label>
+          <label class="f">Adults<select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+          <label class="f">You paid per night <small>before tax</small><input name="paid" inputmode="decimal" placeholder="329"></label>
+          <label class="f">Room name has <small>optional</small><input name="roomFilter" placeholder="King, Bay View, Suite"></label>
+        </div>
+        <details class="more"><summary>More options</summary>
+          <div class="grid-form">
+            <label class="f">Tell me below <small>per night, instead of what I paid</small><input name="target" inputmode="decimal" placeholder="280"></label>
+            <label class="f">Only if it drops by at least <small>dollars a night</small><input name="minDrop" inputmode="decimal" placeholder="1"></label>
+            <label class="f">Free-cancel deadline <small>from your confirmation</small><input type="date" name="cancelBy"></label>
+          </div></details>
+        <fieldset class="alerts" id="alertsBox">
+          <legend>How should we reach you?</legend>
+          <label class="f">Phone alerts with the free ntfy app<input name="ntfy" id="ntfy" autocomplete="off" spellcheck="false">
+            <small>Get <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> for iPhone or Android, tap +, and subscribe to this exact name.</small></label>
+          <label class="f" id="emailRow" hidden>Email<input type="email" name="email" autocomplete="email" placeholder="you@example.com"></label>
+          <label class="f">Discord <small>optional: a channel's webhook link</small><input name="discord" placeholder="https://discord.com/api/webhooks/…" spellcheck="false"></label>
+          <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="daily" checked style="width:22px;min-height:22px"> Send me every price each morning, not only drops</label>
+          <input name="website" tabindex="-1" autocomplete="off" class="sr" aria-hidden="true">
+        </fieldset>
+        <div class="form-foot"><button class="btn lagoon" type="submit" id="wSubmit">Start watching</button><span class="err" id="wErr" role="alert"></span></div>
+      </form>
+      <div class="done" id="wDone" hidden></div>
+    </div>
+  </section>
+
+  <section class="section panel pad" id="tip" hidden aria-labelledby="tipt"></section>
+</main>
+<div id="ftr"></div>
+
+<script type="module">
+import { $, $$, esc, money, api, getConfig, savedToken, dayName, addDays, daysBetween, checkedLine, toast, copy, randomTopic, header, footer } from "/common.js";
+$("#hdr").innerHTML = header("cal");
+const cfg = await getConfig();
+$("#ftr").innerHTML = footer(cfg.siteName);
+if (cfg.notice) { $("#notice").textContent = cfg.notice; $("#notice").hidden = false; }
+if (new URLSearchParams(location.search).get("thanks")) { toast("Thank you for the tip!"); history.replaceState(null, "", "/"); }
+const H = Object.fromEntries(cfg.hotels.map((h) => [h.id, h]));
+const TIERS = [...new Set(cfg.hotels.map((h) => h.tier))];
+const today = cfg.today;
+const TAX = 1.125;
+const RNAME = { standard: "Standard", ap: "Passholder", florida: "Florida resident", military: "Military" };
+
+// ---------- remembered choices (this browser only) ----------
+const saved = (() => { try { return JSON.parse(localStorage.getItem("rr.view2") || "{}"); } catch { return {}; } })();
+const discounts = cfg.boardRates.filter((r) => r !== "standard");
+const state = {
+  rates: new Set(["standard", ...(saved.rates || []).filter((r) => discounts.includes(r))].filter((r) => cfg.boardRates.includes(r))),
+  adults: cfg.boardAdults.includes(saved.adults) ? saved.adults : cfg.boardAdults[0],
+  hotels: new Set((saved.hotels || []).filter((id) => H[id])),
+  month: today.slice(0, 7), day: null,
+};
+if (!state.rates.size) state.rates.add(cfg.boardRates[0]);
+const remember = () => { try { localStorage.setItem("rr.view2", JSON.stringify({ rates: [...state.rates], adults: state.adults, hotels: [...state.hotels] })); } catch {} };
+
+const months = [];
+for (let d = today.slice(0, 7), end = addDays(today, cfg.boardDays - 1).slice(0, 7); d <= end; ) {
+  months.push(d);
+  const [y, m] = d.split("-").map(Number);
+  d = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+const monthName = (m, o = { month: "long", year: "numeric" }) => new Date(m + "-15T12:00:00Z").toLocaleDateString("en-US", { ...o, timeZone: "UTC" });
+
+$("#checked").textContent = cfg.lastRun?.finished ? checkedLine(cfg.lastRun.finished) : "The first check hasn't run yet";
+
+// ---------- the Raven's Report ----------
+const SLOTNAME = { morning: "morning", afternoon: "afternoon", evening: "evening" };
+api("/api/report").then((r) => {
+  if (!r || !r.at) return;
+  const at = new Date(r.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
+  const day = (iso) => dayName(iso, { weekday: "short", month: "short", day: "numeric" });
+  const jump = (c) => `data-jump="${c.date}|${c.rate}|${c.hotel}"`;
+  const best = r.discounts?.[0];
+  $("#report").innerHTML = `<header><h2 id="rt">The Raven’s Report</h2><span>${r.slot ? `This ${SLOTNAME[r.slot]}’s check, ` : ""}${at} Central</span></header>
+    <div class="r-sec r-big">${r.dropCount ? `<b class="tnum">${r.dropCount}</b><span>nights got cheaper since the last check${r.riseCount ? `, ${r.riseCount} went up` : ""}.</span>` : `<span>No price drops since the last check. ${r.changed ? `${r.changed} nights went up.` : "Prices held steady."}</span>`}</div>
+    ${r.drops?.length ? `<div class="r-sec"><h3>Biggest drops</h3><ul class="tariff">${r.drops.slice(0, 4).map((c) => `<li><div class="line" role="button" tabindex="0" ${jump(c)}><span class="nm">${esc(H[c.hotel]?.short)} <span class="when">${day(c.date)}</span></span><span class="dots"></span><span class="pr tnum"><s>${money(c.prev)}</s>${money(c.p)}</span></div></li>`).join("")}</ul></div>` : ""}
+    ${r.express ? `<div class="r-sec"><h3>Cheapest night with Express included</h3><div class="line" role="button" tabindex="0" ${jump(r.express)}><span class="nm">${esc(H[r.express.hotel]?.short)} <span class="when">${day(r.express.date)}, ${esc(RNAME[r.express.rate])}</span></span><span class="dots"></span><span class="pr tnum">${money(r.express.p)}</span></div>
+      <p class="small" style="margin-top:4px">One night gets Express Unlimited for that day and the next.</p></div>` : ""}
+    ${r.tiers?.length ? `<div class="r-sec"><h3>Cheapest night in the next 30 days</h3><div class="tiers">${r.tiers.map((t) => `<div role="button" tabindex="0" style="cursor:pointer" ${jump(t)}>${esc(t.tier)}<b class="tnum">${money(t.p)}</b>${esc(H[t.hotel]?.short)}, ${day(t.date)}</div>`).join("")}</div></div>` : ""}
+    ${best?.avgOff ? `<div class="r-sec"><h3>Discount of the day</h3><p><b>${esc(RNAME[best.rate])}</b> rates average <b>${best.avgOff}% off</b> Standard over the next 60 days${r.discounts.length > 1 ? `. ${r.discounts.slice(1).filter((d) => d.avgOff != null).map((d) => `${esc(RNAME[d.rate])} ${d.avgOff}%`).join(", ")}.` : "."}</p></div>` : ""}`;
+  $("#report").hidden = false;
+  const open = (el) => {
+    const [d, rate, hotel] = el.dataset.jump.split("|");
+    if (rate !== "standard") state.rates.add(rate);
+    state.hotels.clear(); remember(); sync();
+    state.month = d.slice(0, 7); state.day = d;
+    render().then(() => { $$("#months button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === state.month)); $("#night")?.scrollIntoView({ block: "center" }); });
+    months_();
+  };
+  $("#report").addEventListener("click", (e) => { const el = e.target.closest("[data-jump]"); if (el) open(el); });
+  $("#report").addEventListener("keydown", (e) => { const el = e.target.closest("[data-jump]"); if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(el); } });
+}).catch(() => {});
+
+// ---------- controls ----------
+$("#rates").innerHTML = cfg.boardRates.map((r) => r === "standard"
+  ? `<button type="button" class="chip always" disabled aria-pressed="true" title="Everyone can book this">Standard</button>`
+  : `<button type="button" class="chip" data-v="${r}">${RNAME[r] || r}</button>`).join("");
+$("#adults").innerHTML = cfg.boardAdults.map((a) => `<button type="button" data-v="${a}">${a <= 2 ? "1–2" : a}</button>`).join("");
+$("#hotels").innerHTML = `<button type="button" class="chip" data-all>All hotels</button>` +
+  TIERS.map((t) => `<button type="button" class="chip" data-tier="${t}">${t}</button>`).join("") + `<span class="sep" aria-hidden="true"></span>` +
+  cfg.hotels.map((h) => `<button type="button" class="chip" data-h="${h.id}" title="${esc(h.name)}, ${h.tier}${h.express ? ", Express included" : ""}">${esc(h.short)}</button>`).join("");
+
+function sync() {
+  $$("#rates [data-v]").forEach((b) => b.setAttribute("aria-pressed", state.rates.has(b.dataset.v)));
+  $$("#adults button").forEach((b) => b.setAttribute("aria-pressed", Number(b.dataset.v) === state.adults));
+  $$("#hotels [data-h]").forEach((b) => b.setAttribute("aria-pressed", state.hotels.has(b.dataset.h)));
+  $("#hotels [data-all]").setAttribute("aria-pressed", !state.hotels.size);
+  $$("#hotels [data-tier]").forEach((b) => {
+    const ids = cfg.hotels.filter((h) => h.tier === b.dataset.tier).map((h) => h.id);
+    b.setAttribute("aria-pressed", state.hotels.size === ids.length && ids.every((i) => state.hotels.has(i)));
+  });
+}
+$("#rates").onclick = (e) => { const b = e.target.closest("[data-v]"); if (!b) return; state.rates.has(b.dataset.v) ? state.rates.delete(b.dataset.v) : state.rates.add(b.dataset.v); if (!state.rates.size) state.rates.add("standard"); remember(); refresh(); };
+$("#adults").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; state.adults = Number(b.dataset.v); remember(); refresh(); };
+$("#hotels").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if ("all" in b.dataset) state.hotels.clear();
+  else if (b.dataset.tier) state.hotels = new Set(cfg.hotels.filter((h) => h.tier === b.dataset.tier).map((h) => h.id));
+  else state.hotels.has(b.dataset.h) ? state.hotels.delete(b.dataset.h) : state.hotels.add(b.dataset.h);
+  remember(); sync(); render(); months_();
+};
+
+// ---------- data: merge every rate you can get, keep the cheapest ----------
+const cache = new Map();
+const rawMonth = (rate, adults, m) => {
+  const k = `${rate}|${adults}|${m}`;
+  if (!cache.has(k)) cache.set(k, api(`/api/board?rate=${rate}&adults=${adults}&month=${m}`).then((d) => d.days).catch(() => ({})));
+  return cache.get(k);
+};
+async function monthData(m, adults = state.adults, rates = state.rates) {
+  const sets = await Promise.all([...rates].map(async (r) => [r, await rawMonth(r, adults, m)]));
+  const out = {};
+  for (const [rate, days] of sets) for (const [d, hotels] of Object.entries(days)) for (const [h, c] of Object.entries(hotels)) {
+    const slot = ((out[d] ||= {})[h] ||= { all: {} });
+    slot.all[rate] = c;
+    const best = slot.best;
+    if (c.t && (best == null || (c.p != null && (best.p == null || c.p < best.p)))) slot.best = { ...c, rate };
+  }
+  return out;
+}
+const chosen = () => (state.hotels.size ? [...state.hotels] : cfg.hotels.map((h) => h.id));
+const rowsFor = (day) => chosen().map((id) => ({ id, ...(day?.[id]?.best || {}), all: day?.[id]?.all || {} })).filter((r) => r.t);
+
+async function refresh() { sync(); cache.size > 400 && cache.clear(); await render(); months_(); }
+
+async function months_() {
+  const lows = await Promise.all(months.map(async (m) => {
+    const days = await monthData(m);
+    let low = null;
+    for (const [d, v] of Object.entries(days)) if (d >= today) for (const r of rowsFor(v)) if (r.p != null && (low == null || r.p < low)) low = r.p;
+    return low;
+  }));
+  const min = Math.min(...lows.filter((x) => x != null));
+  $("#months").innerHTML = months.map((m, i) => `<button type="button" data-m="${m}" aria-pressed="${m === state.month}">
+    <span>${monthName(m, { month: "short" })}${m.slice(0, 4) !== today.slice(0, 4) ? " ’" + m.slice(2, 4) : ""}</span>
+    <b class="tnum ${lows[i] === min ? "hl" : ""}">${lows[i] != null ? money(lows[i]) : "–"}</b></button>`).join("");
+}
+$("#months").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; go(b.dataset.m); };
+$("#prev").onclick = () => go(months[months.indexOf(state.month) - 1]);
+$("#next").onclick = () => go(months[months.indexOf(state.month) + 1]);
+function go(m) {
+  if (!m) return;
+  state.month = m; state.day = null; render();
+  $$("#months button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.m === m));
+  $(`#months [data-m="${m}"]`)?.scrollIntoView({ inline: "nearest", block: "nearest" });
+}
+
+let monthDays = {};
+async function render() {
+  const m = state.month;
+  $("#monthTitle").textContent = monthName(m);
+  $("#prev").disabled = months.indexOf(m) <= 0;
+  $("#next").disabled = months.indexOf(m) >= months.length - 1;
+  monthDays = await monthData(m);
+  if (m !== state.month) return;
+  const [y, mo] = m.split("-").map(Number);
+  const first = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay();
+  const dim = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  const few = state.hotels.size > 0 && state.hotels.size <= 3;
+
+  const nights = [];
+  for (let d = 1; d <= dim; d++) {
+    const iso = `${m}-${String(d).padStart(2, "0")}`;
+    const rows = rowsFor(monthDays[iso]).filter((r) => r.p != null).sort((a, b) => a.p - b.p);
+    nights.push({ iso, d, rows, low: rows[0] || null, sold: rowsFor(monthDays[iso]).some((r) => r.s === "soldout") });
+  }
+  const prices = nights.filter((n) => n.low && n.iso >= today).map((n) => n.low.p).sort((a, b) => a - b);
+  const third = prices[Math.floor(prices.length / 3)] ?? -1;
+  const best = prices[0];
+
+  if (!Object.keys(monthDays).length) {
+    $("#weeks").innerHTML = `<div class="cal-empty"><h3>No prices for ${monthName(m, { month: "long" })} yet</h3><p class="muted">The calendar fills in a little more every morning, closest dates first.${cfg.lastRun ? " Check back tomorrow." : " Prices appear after the first 7:10am check."}</p></div>`;
+    return;
+  }
+  // Build week rows; skip weeks that are already over.
+  const cells = Array(first).fill(null).concat(nights);
+  while (cells.length % 7) cells.push(null);
+  let html = "";
+  for (let w = 0; w < cells.length; w += 7) {
+    const week = cells.slice(w, w + 7);
+    if (week.every((n) => !n || n.iso < today)) continue;
+    html += `<div class="week">${week.map((n) => {
+      if (!n) return `<div class="cell" aria-hidden="true"></div>`;
+      const past = n.iso < today;
+      if (!n.low || past) return `<button type="button" class="cell" disabled aria-label="${dayName(n.iso)}: ${past ? "past" : n.sold ? "sold out" : "not checked yet"}"><span class="d">${n.d}</span>${!past && n.sold ? `<span class="gone">Sold out</span>` : ""}</button>`;
+      const lo = n.low;
+      const mv = lo.prev != null && lo.prev !== lo.p ? `<span class="mv ${lo.p < lo.prev ? "down" : "up"}">${lo.p < lo.prev ? "▼" : "▲"}${money(Math.abs(lo.prev - lo.p))}</span>` : "";
+      const cls = lo.p === best ? "hl" : lo.p <= third ? "cheap" : "";
+      const body = few
+        ? `<span class="multi">${n.rows.map((r) => `<span><em>${esc(H[r.id].short)}</em><b class="tnum">${money(r.p)}</b></span>`).join("")}</span>`
+        : `<span class="p tnum ${cls}">${money(lo.p)}</span><span class="h">${esc(H[lo.id].short)}</span>${state.rates.size > 1 ? `<span class="r">${RNAME[lo.rate]}</span>` : ""}`;
+      return `<button type="button" class="cell" data-day="${n.iso}" aria-pressed="${state.day === n.iso}" aria-label="${dayName(n.iso)}: from ${money(lo.p)} at ${esc(H[lo.id].name)}"><span class="d"><span>${n.d}</span>${few ? "" : mv}</span>${body}</button>`;
+    }).join("")}</div>`;
+    if (state.day && week.some((n) => n && n.iso === state.day)) html += nightList(state.day);
+  }
+  $("#weeks").innerHTML = html;
+}
+
+// ---------- one night, as a tariff list ----------
+function nightList(iso) {
+  const rows = rowsFor(monthDays[iso]).sort((a, b) => (a.p ?? 1e9) - (b.p ?? 1e9));
+  const checked = rows.map((r) => r.t).sort().pop();
+  return `<div class="night" id="night" tabindex="-1">
+    <div class="night-head"><div><h3 class="slab" style="font-family:var(--slab);font-weight:400;font-size:26px">${dayName(iso, { weekday: "long", month: "long", day: "numeric" })}</h3>
+      <p class="small">${state.adults <= 2 ? "1–2" : state.adults} adults, 1 night. ${checked ? checkedLine(checked) + "." : ""}</p></div>
+      <button type="button" class="btn ghost small" data-close>Close</button></div>
+    <ul class="tariff">${rows.map((r) => {
+      const others = Object.entries(r.all).filter(([rt, c]) => rt !== r.rate && c.p != null).map(([rt, c]) => `${RNAME[rt]} ${money(c.p)}`);
+      return `<li><div class="line"><span class="nm">${esc(H[r.id].name)}</span><span class="dots"></span><span class="pr tnum">${r.p != null ? money(r.p) : "Sold out"}</span></div>
+        <div class="sub">${r.p != null ? `<span>${esc(RNAME[r.rate])} rate${r.r ? `, ${esc(r.r)}` : ""}</span>` : ""}
+          ${r.was ? `<span>was <s>${money(r.was)}</s></span>` : ""}
+          ${r.prev != null && r.p != null && r.prev !== r.p ? `<span class="mv ${r.p < r.prev ? "down" : "up"}">${r.p < r.prev ? "▼ down" : "▲ up"} ${money(Math.abs(r.prev - r.p))}</span>` : ""}
+          ${r.low != null && r.p != null && r.p <= r.low ? `<span><b>Lowest we've seen</b></span>` : r.low != null && r.p != null ? `<span>Low seen ${money(r.low)}</span>` : ""}
+          ${H[r.id].express ? `<span class="tag x">Express included</span>` : ""}${(r.o || []).filter((o) => !/best available/i.test(o)).map((o) => `<span class="tag">${esc(o)}</span>`).join("")}</div>
+        ${others.length ? `<div class="rates-mini">Other rates: ${others.join(", ")}</div>` : ""}
+        ${r.p != null ? `<div style="margin-top:6px"><button type="button" class="link-btn" data-watch="${r.id}" data-rate="${r.rate}">Watch this room</button></div>` : ""}</li>`;
+    }).join("") || `<li class="muted">Not checked yet for these hotels.</li>`}</ul></div>`;
+}
+$("#weeks").onclick = (e) => {
+  if (e.target.closest("[data-close]")) { state.day = null; return render(); }
+  const w = e.target.closest("[data-watch]");
+  if (w) return prefillWatch(w.dataset.watch, state.day, w.dataset.rate);
+  const c = e.target.closest("[data-day]");
+  if (!c) return;
+  state.day = state.day === c.dataset.day ? null : c.dataset.day;
+  render().then(() => $("#night")?.focus({ preventScroll: true }));
+};
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.day) { state.day = null; render(); } });
+
+// ---------- stay planner ----------
+const pf = $("#pform");
+pf.a.min = today; pf.b.min = addDays(today, 1);
+pf.a.value = addDays(today, 30); pf.b.value = addDays(today, 34);
+pf.a.onchange = () => { if (pf.b.value <= pf.a.value) pf.b.value = addDays(pf.a.value, 3); pf.b.min = addDays(pf.a.value, 1); };
+pf.onsubmit = async (e) => {
+  e.preventDefault();
+  const a = pf.a.value, b = pf.b.value, adults = Number(pf.ad.value);
+  const n = daysBetween(a, b);
+  if (!a || !b || n < 1) return toast("Pick a leave date after your arrival.");
+  if (n > 21) return toast("Plan up to 21 nights at a time.");
+  const useAdults = cfg.boardAdults.includes(adults) ? adults : cfg.boardAdults.reduce((x, y) => (Math.abs(y - adults) < Math.abs(x - adults) ? y : x));
+  const dates = Array.from({ length: n }, (_, i) => addDays(a, i));
+  const ms = [...new Set(dates.map((d) => d.slice(0, 7)))];
+  const data = Object.assign({}, ...(await Promise.all(ms.map((m) => monthData(m, useAdults)))));
+  const ids = cfg.hotels.map((h) => h.id);
+  const price = (h, d) => data[d]?.[h]?.best?.p ?? null;
+  const rateOf = (h, d) => data[d]?.[h]?.best?.rate;
+
+  // whole stay at one hotel
+  const singles = ids.map((h) => {
+    const ps = dates.map((d) => price(h, d));
+    return { h, total: ps.every((p) => p != null) ? ps.reduce((x, y) => x + y, 0) : null, missing: ps.filter((p) => p == null).length };
+  }).filter((s) => s.total != null).sort((x, y) => x.total - y.total);
+
+  // one move between two hotels
+  let split = null;
+  if (n >= 2) for (const h1 of ids) for (const h2 of ids) if (h1 !== h2) for (let k = 1; k < n; k++) {
+    const p1 = dates.slice(0, k).map((d) => price(h1, d)), p2 = dates.slice(k).map((d) => price(h2, d));
+    if ([...p1, ...p2].some((p) => p == null)) continue;
+    const t = [...p1, ...p2].reduce((x, y) => x + y, 0);
+    if (!split || t < split.total) split = { h1, h2, k, total: t };
+  }
+
+  // Express trick: one night at an Express hotel = Express on arrival day and the next day
+  const exHotels = ids.filter((h) => H[h].express);
+  let trick = null;
+  for (const d of dates) for (const h of exHotels) {
+    const p = price(h, d);
+    if (p == null) continue;
+    const cheapest = Math.min(...ids.map((x) => price(x, d)).filter((x) => x != null));
+    const extra = p - cheapest;
+    if (!trick || extra < trick.extra) trick = { h, d, p, extra, cheapest };
+  }
+
+  const wt = (t) => money(t * TAX);
+  const best = singles[0];
+  const saving = best && split ? best.total - split.total : 0;
+  $("#pout").innerHTML = !singles.length ? `<p class="pad">We don't have every night of that trip checked yet. Try dates closer to today, or check back in a few mornings.</p>` : `
+    <div class="plan-out">
+      <div><h3>Whole stay, one hotel</h3><p class="small" style="margin-bottom:6px">${n} night${n > 1 ? "s" : ""}, ${dayName(a)} to ${dayName(b)}. Totals include 12.5% tax.</p>
+        <ul class="tariff">${singles.slice(0, 7).map((s, i) => `<li><div class="line"><span class="nm">${esc(H[s.h].name)}</span><span class="dots"></span><span class="pr tnum ${i === 0 ? "hl" : ""}">${wt(s.total)}</span></div>
+          <div class="sub"><span>${money(s.total / n)} a night before tax</span>${H[s.h].express ? `<span class="tag x">Express included</span>` : ""}<span>${[...new Set(dates.map((d) => RNAME[rateOf(s.h, d)]))].join(" / ")} rate</span></div></li>`).join("")}</ul>
+      </div>
+      <div>
+        <div class="trick"><h3>Split the stay</h3>${split && saving >= 20 ? `
+          <p class="big tnum">Save ${wt(saving)}</p>
+          <p style="margin-top:6px">Stay ${split.k} night${split.k > 1 ? "s" : ""} at <b>${esc(H[split.h1].short)}</b>, then ${n - split.k} at <b>${esc(H[split.h2].short)}</b> from ${dayName(dates[split.k])}. That's ${wt(split.total)} with tax, against ${wt(best.total)} at ${esc(H[best.h].short)} the whole time.</p>
+          <p class="small" style="margin-top:6px">You'll move hotels once. Bell services can usually transfer your bags.</p>`
+          : `<p>Staying put is cheapest for these dates. Splitting would save ${saving > 0 ? "only " + wt(saving) : "nothing"}.</p>`}</div>
+        <div class="trick"><h3>The Express trick</h3>${trick ? `
+          <p>One night at <b>${esc(H[trick.h].name)}</b> on ${dayName(trick.d)} for <b>${money(trick.p)}</b> gets everyone in the room Express Unlimited on ${dayName(trick.d, { weekday: "long" })} and ${dayName(addDays(trick.d, 1), { weekday: "long" })}.</p>
+          <p class="small" style="margin-top:6px">${trick.extra > 0 ? `That's ${money(trick.extra)} more than the cheapest hotel that night,` : "It's also the cheapest hotel that night,"} usually far less than buying Express passes for two days.</p>`
+          : `<p>No Express hotel has a price checked for these nights yet.</p>`}</div>
+        <p class="small" style="margin-top:22px">Prices add up 1-night rates from the latest check. A multi-night booking is usually the same, but confirm on the booking site.</p>
+      </div>
+    </div>`;
+};
+
+// ---------- watch a room ----------
+function nextCheck() {
+  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hour: "numeric", hourCycle: "h23" }).format(new Date()));
+  const m = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", minute: "numeric" }).format(new Date()));
+  const t = h * 60 + m;
+  return t < 7 * 60 + 10 ? "7:10am" : t < 13 * 60 + 10 ? "1:10pm" : t < 19 * 60 + 10 ? "7:10pm" : "7:10am tomorrow";
+}
+const f = $("#wform");
+$("#wHotel").innerHTML = TIERS.map((t) => `<optgroup label="${t}">${cfg.hotels.filter((h) => h.tier === t).map((h) => `<option value="${h.id}">${esc(h.name)}</option>`).join("")}</optgroup>`).join("");
+$("#wRate").innerHTML = cfg.rateTypes.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join("");
+f.checkIn.min = today; f.checkIn.value = addDays(today, 30);
+$("#ntfy").value = randomTopic();
+if (cfg.email) $("#emailRow").hidden = false;
+const linked = () => { $("#alertsBox").hidden = true; $("#haveLink").hidden = false; $("#haveLink").innerHTML = `Adds to <a href="/my">your rooms</a>, using the same alerts.`; };
+if (savedToken.get()) linked();
+function prefillWatch(h, d, rate) {
+  f.hotel.value = h; f.checkIn.value = d; f.rate.value = rate || "standard"; f.adults.value = String(state.adults);
+  $("#watch").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  setTimeout(() => f.paid.focus({ preventScroll: true }), 450);
+}
+if (cfg.sales) {
+  const s = cfg.sales;
+  $("#pricing").innerHTML = `<div class="panel pad"><h3>Free and pass</h3>
+    <p style="margin-top:8px">Free: watch ${s.freeLimit} room${s.freeLimit > 1 ? "s" : ""}${s.freeWindowDays ? `, checked in the last ${s.freeWindowDays} days before arrival` : ""}.</p>
+    <p style="margin-top:4px">Pass: <b>${money(s.price / 100)}</b> once for ${s.days} days, up to ${s.passLimit} rooms, checked from the day you book. Nothing renews.</p>
+    <p class="small" style="margin-top:8px">The calendar and stay planner are always free.</p></div>`;
+}
+f.onsubmit = async (e) => {
+  e.preventDefault();
+  $("#wErr").textContent = "";
+  const v = Object.fromEntries(new FormData(f));
+  const num = (x) => String(x || "").replace(/[$,\s]/g, "");
+  const watch = { hotel: v.hotel, rate: v.rate, checkIn: v.checkIn, nights: Number(v.nights), adults: Number(v.adults), paid: num(v.paid), target: num(v.target), minDrop: num(v.minDrop), cancelBy: v.cancelBy, roomFilter: v.roomFilter };
+  $("#wSubmit").disabled = true;
+  try {
+    let k = savedToken.get(), fresh = false;
+    if (!k) {
+      const channels = { ntfy: (v.ntfy || "").trim(), discord: (v.discord || "").trim(), email: (v.email || "").trim() };
+      if (!channels.ntfy && !channels.discord && !channels.email) throw new Error("Add at least one way to reach you.");
+      k = (await api("/api/key", { method: "POST", body: { channels, daily: !!v.daily, website: v.website } })).token;
+      savedToken.set(k); fresh = true;
+    }
+    try { await api("/api/watch", { method: "POST", body: { k, watch } }); }
+    catch (err) { if (err.status === 404) savedToken.clear(); throw err; }
+    const link = `${location.origin}/my?k=${k}`;
+    f.hidden = true; $("#wDone").hidden = false;
+    $("#wDone").innerHTML = `<h3 style="font-family:var(--slab);font-weight:400;font-size:28px">You're set.</h3>
+      <p>${esc(H[watch.hotel].name)}, ${dayName(watch.checkIn)}, ${watch.nights} night${watch.nights > 1 ? "s" : ""}. The next check is at ${nextCheck()} Central.</p>
+      ${fresh ? `<p><b>Save your private link.</b> It's how you get back to your rooms. There's no password.</p>
+      <div class="linkbox"><input readonly value="${esc(link)}" aria-label="Your private link"><button class="btn small" type="button" id="cp">Copy</button></div>
+      ${v.ntfy ? `<p class="small">In the ntfy app, subscribe to <b>${esc(v.ntfy)}</b>.</p>` : ""}` : ""}
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="/my?k=${esc(k)}">See my rooms</a><button class="btn ghost" type="button" id="another">Watch another room</button></div>`;
+    $("#cp")?.addEventListener("click", () => copy(link));
+    $("#another").onclick = () => { $("#wDone").hidden = true; f.hidden = false; linked(); f.paid.value = ""; f.roomFilter.value = ""; };
+  } catch (err) {
+    $("#wErr").innerHTML = esc(err.message) + (err.status === 402 ? ` <a href="/my">Get a pass</a>` : "");
+  } finally { $("#wSubmit").disabled = false; }
+};
+
+// ---------- tip jar ----------
+if (cfg.tip) {
+  const t = cfg.tip;
+  $("#tip").hidden = false;
+  $("#tip").innerHTML = `<div class="tipjar">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M16 14h32v6c6 3 8 9 8 16 0 13-10 22-24 22S8 49 8 36c0-7 2-13 8-16z" fill="var(--wash)" stroke="var(--ink)" stroke-width="2.5"/><rect x="14" y="8" width="36" height="8" rx="2" fill="var(--sun)" stroke="var(--ink)" stroke-width="2.5"/><path d="M26 11h12" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/><circle cx="25" cy="40" r="5" fill="var(--sun)" stroke="var(--ink)" stroke-width="2"/><circle cx="38" cy="45" r="4" fill="var(--sun)" stroke="var(--ink)" stroke-width="2"/></svg>
+    <div><h2 id="tipt" style="font-size:30px">Tip jar</h2><p style="margin-top:6px;max-width:60ch">${esc(t.message)}</p>
+      <div class="tip-amts">${t.url ? `<a class="btn lagoon" href="${esc(t.url)}" target="_blank" rel="noopener">Leave a tip</a>`
+        : `${(t.amounts || []).map((a) => `<button class="btn ghost" type="button" data-tip="${a}">${money(a)}</button>`).join("")}
+           <label class="sr" for="tipOther">Other amount</label><input id="tipOther" inputmode="decimal" placeholder="Other $">
+           <button class="btn lagoon" type="button" id="tipGo">Tip</button>`}</div></div></div>`;
+  const send = async (amount) => {
+    try { location.href = (await api("/api/tip", { method: "POST", body: { amount } })).url; } catch (x) { toast(x.message); }
+  };
+  $("#tip").onclick = (e) => { const b = e.target.closest("[data-tip]"); if (b) send(Number(b.dataset.tip)); };
+  $("#tipGo")?.addEventListener("click", () => send(Number(String($("#tipOther").value).replace(/[$,\s]/g, ""))));
+}
+
+refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Admin — RateRaven</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0d3b45">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RateRaven">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+<link rel="preload" href="/fonts/AlfaSlabOne-Regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="/app.css">
+<style>
+  .adm { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; padding: 16px 0 40px; }
+  @media (max-width: 860px) { .adm { grid-template-columns: 1fr; } .toc { position: static !important; display: flex !important; flex-wrap: wrap; gap: 4px; } }
+  .toc { position: sticky; top: 16px; display: grid; gap: 2px; }
+  .toc a { text-decoration: none; padding: 8px 12px; border-radius: 10px; color: var(--ink-2); font-weight: 550; }
+  .toc a:hover { background: var(--sky-2); color: var(--ink); }
+  section.panel { margin-bottom: 22px; }
+  section h2 { font-size: 28px; margin-bottom: 6px; }
+  section > p.muted { margin-bottom: 18px; max-width: 70ch; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 10px 0 18px; }
+  .stat { background: var(--sky-2); border-radius: 14px; padding: 12px 14px; }
+  .stat b { display: block; font-family: var(--slab); font-weight: 400; font-size: 30px; }
+  .stat span { color: var(--ink-3); font-size: 14px; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 650; }
+  .pill.on { background: var(--lagoon-2); color: var(--ink); } .pill.off { background: var(--plum-2); color: var(--ink); }
+  .toggle { display: flex; gap: 12px; align-items: center; font-weight: 650; }
+  .toggle input { width: 22px; min-height: 22px; }
+  .hl { display: grid; grid-template-columns: 170px 1fr; gap: 8px 12px; align-items: center; }
+  .hl span { font-weight: 600; font-size: 15px; }
+  @media (max-width: 600px) { .hl { grid-template-columns: 1fr; } }
+  .out { background: var(--sky-2); border-radius: 14px; padding: 14px; font-size: 14px; overflow: auto; }
+  .out code { white-space: pre-wrap; word-break: break-all; }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.t th, table.t td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  table.t th { color: var(--ink-3); font-weight: 600; }
+  .shot { max-width: 100%; border-radius: 12px; border: 1px solid var(--line); margin-top: 12px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .checks label { display: flex; gap: 8px; align-items: center; font-weight: 550; }
+  .checks input { width: 20px; min-height: 20px; }
+  .login { max-width: 420px; margin: 60px auto; padding: 28px; display: grid; gap: 14px; }
+</style>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap" id="main"></main>
+<script type="module">
+import { $, $$, esc, money, api, header, toast, ago } from "/common.js";
+import { buildScraperConfig } from "/setup-helper.js";
+$("#hdr").innerHTML = header();
+let pw = ""; try { pw = sessionStorage.getItem("rr.admin2") || ""; } catch {}
+let A;
+const call = (body) => api("/api/admin", { method: body ? "POST" : "GET", body, headers: { authorization: `Bearer ${pw}` } });
+
+function login(msg = "") {
+  $("#main").innerHTML = `<form class="panel login" id="lf"><h1 style="font-size:40px">Admin</h1>
+    <label class="f">Username<input name="u" autocomplete="username" required autocapitalize="off" spellcheck="false"></label>
+    <label class="f">Password<input type="password" name="p" autocomplete="current-password" required></label>
+    <button class="btn">Open admin</button><span class="err" role="alert">${esc(msg)}</span></form>`;
+  $("#lf").onsubmit = (e) => { e.preventDefault(); pw = `${e.target.u.value.trim()}:${e.target.p.value}`; try { sessionStorage.setItem("rr.admin2", pw); } catch {} load(); };
+}
+async function load() {
+  if (!pw) return login();
+  try { A = await call(); } catch (e) { pw = ""; return login(e.status === 401 ? "That password didn't work." : e.message); }
+  draw();
+}
+const save = async (settings, msg = "Saved") => {
+  try { A.settings = (await call({ settings })).settings; toast(msg); draw(); } catch (e) { toast(e.message); }
+};
+
+function draw() {
+  const s = A.settings, e = A.env, st = A.stats, L = A.lastRun, P = A.probe;
+  const H = A.hotels, R = A.rateTypes;
+  const setUp = !!s.scraper.urlTemplate;
+  const codes = Object.keys(s.scraper.hotelCodes || {}).length;
+  $("#main").innerHTML = `<div class="adm">
+  <nav class="toc" aria-label="Admin sections"><a href="#status">Status</a><a href="#scraper">Scraper setup</a><a href="#test">Test a search</a><a href="#calendar">Calendar</a><a href="#sales">Sales</a><a href="#tipjar">Tip jar</a><a href="#email">Email</a><a href="#site">Site</a></nav>
+  <div>
+  <section class="panel pad" id="status"><h2>Status</h2>
+    <div class="stats">
+      <div class="stat"><b>${st.links}</b><span>private links</span></div>
+      <div class="stat"><b>${st.active}</b><span>rooms being watched</span></div>
+      <div class="stat"><b>${st.drops}</b><span>drop alerts sent</span></div>
+      <div class="stat"><b>${st.passes}</b><span>active passes</span></div>
+      <div class="stat"><b>${st.payments}</b><span>passes sold</span></div>
+      <div class="stat"><b>${money(st.tipCents / 100)}</b><span>${st.tips} card tips</span></div>
+    </div>
+    <p>${L?.finished ? `Last check (${esc(L.slot || "")}) finished ${ago(L.finished)}: ${L.stats?.ok ?? 0} prices read, ${L.stats?.soldout ?? 0} sold out, ${(L.stats?.empty ?? 0) + (L.stats?.error ?? 0)} couldn't be read, ${L.stats?.blocked ?? 0} blocked. Took ${L.minutes ?? "?"} min. ${L.sent ?? 0} messages sent.` : "No morning check has finished yet."}</p>
+    ${L?.stats?.blockedStop ? `<p class="note" style="margin-top:10px">The booking site blocked the last check, so it stopped early. Lower "Searches per morning" and "Tabs at once" in Calendar, then try again tomorrow.</p>` : ""}
+    <p class="muted" style="margin-top:8px">Checks run at 7:10am, 1:10pm and 7:10pm Central. Scraper secret ${e.scraperSecret ? '<span class="pill on">set</span>' : '<span class="pill off">missing on Netlify</span>'}</p>
+    <div class="acts"><button class="btn" id="runNow" ${e.github ? "" : "disabled"}>Run the full check now</button>
+      ${e.github ? "" : `<span class="muted">To use this button, add GITHUB_TOKEN and GITHUB_REPO on Netlify. Or use GitHub → Actions → Morning price check → Run workflow.</span>`}</div>
+    ${A.history.length ? `<details style="margin-top:16px"><summary>Last ${A.history.length} checks</summary><table class="t" style="margin-top:8px"><thead><tr><th>Day</th><th>Read</th><th>Sold out</th><th>Failed</th><th>Blocked</th><th>Minutes</th></tr></thead><tbody>
+      ${A.history.slice().reverse().map((h) => `<tr><td>${esc(h.date || "")}</td><td>${h.stats?.ok ?? ""}</td><td>${h.stats?.soldout ?? ""}</td><td>${(h.stats?.empty ?? 0) + (h.stats?.error ?? 0)}</td><td>${h.stats?.blocked ?? ""}</td><td>${h.minutes ?? ""}</td></tr>`).join("")}</tbody></table></details>` : ""}
+  </section>
+
+  <section class="panel pad" id="scraper"><h2>Scraper setup</h2>
+    <p class="muted">Teach the scraper the booking site's links. On the official booking site, search each hotel for any dates with 2 adults, then copy the address bar and paste it next to that hotel. It works out the rest. ${setUp ? `Set up for ${codes} of ${H.length} hotels.` : ""}</p>
+    <form id="sf">
+      <div class="hl">${H.map((h) => `<span>${esc(h.short)}${s.scraper.hotelCodes?.[h.id] ? ` <span class="pill on">${esc(s.scraper.hotelCodes[h.id])}</span>` : ""}</span><input name="h_${h.id}" placeholder="Paste a ${esc(h.short)} search link" spellcheck="false">`).join("")}</div>
+      <h3 style="margin:22px 0 6px">Discount rates</h3>
+      <p class="muted" style="margin-bottom:12px">Search any hotel again, this time choosing the rate (Annual Passholder, Florida resident, Military), and paste that link. If the site picks the rate with a button instead of the link, type the button's words in "Click text".</p>
+      <div class="hl">${R.filter((r) => r.id !== "standard").map((r) => `<span>${esc(r.name)}${Object.keys(s.scraper.rateParams?.[r.id] || {}).length ? ` <span class="pill on">set</span>` : ""}</span>
+        <div style="display:grid;gap:6px;grid-template-columns:1fr 200px"><input name="r_${r.id}" placeholder="Paste a ${esc(r.name)} search link" spellcheck="false"><input name="c_${r.id}" placeholder="Click text" value="${esc(s.scraper.rateClickText?.[r.id] || "")}"></div>`).join("")}</div>
+      <div class="acts"><button class="btn" type="button" id="analyze">Work it out</button><span class="err" id="sErr" role="alert"></span></div>
+    </form>
+    <div id="sOut"></div>
+    <details style="margin-top:18px"><summary>Advanced: edit the settings by hand</summary>
+      <p class="muted" style="margin:8px 0">Optional CSS selectors (card, name, price) help if the automatic reader picks the wrong numbers.</p>
+      <textarea id="raw" rows="14" style="font-size:13px;margin-top:8px" spellcheck="false">${esc(JSON.stringify(s.scraper, null, 2))}</textarea>
+      <div class="acts"><button class="btn ghost" id="saveRaw">Save these settings</button></div></details>
+  </section>
+
+  <section class="panel pad" id="test"><h2>Test a search</h2>
+    <p class="muted">Runs one search on GitHub and shows a screenshot and every room it found. Use this after setup, and any time prices look wrong.</p>
+    <form id="tf" class="grid-form">
+      <label class="f">Hotel<select name="hotel">${H.map((h) => `<option value="${h.id}">${esc(h.name)}</option>`).join("")}</select></label>
+      <label class="f">Check-in<input type="date" name="date"></label>
+      <label class="f">Rate<select name="rate">${R.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select></label>
+      <label class="f">Adults<input type="number" name="adults" value="2" min="1" max="6"></label>
+      <div class="span-all acts" style="margin-top:0"><button class="btn" ${e.github ? "" : "disabled"}>Run test</button><button class="btn ghost" type="button" id="reload">Refresh results</button>
+        ${e.github ? "" : `<span class="muted">Without GITHUB_TOKEN: GitHub → Actions → Morning price check → Run workflow, mode "probe".</span>`}</div>
+    </form>
+    ${P ? `<div style="margin-top:18px"><h3>Last test, ${ago(P.at)}</h3>
+      <p style="margin-top:6px">${esc(P.result.hotel)}, ${esc(P.result.checkIn)}, ${esc(P.result.rate)}: <b>${esc(P.result.status)}</b>${P.result.lowest != null ? `, lowest ${money(P.result.lowest)} (${esc(P.result.lowestRoom)})` : ""}${P.result.error ? ` — ${esc(P.result.error)}` : ""}</p>
+      ${P.result.rooms?.length ? `<table class="t" style="margin-top:10px"><thead><tr><th>Room</th><th>Per night</th><th>Total</th><th>Was</th><th>Discounts shown</th></tr></thead><tbody>${P.result.rooms.map((r) => `<tr><td>${esc(r.name)}</td><td>${money(r.price)}</td><td>${r.total != null ? money(r.total) : ""}</td><td>${r.was ? money(r.was) : ""}</td><td>${esc((r.offers || []).join(", "))}</td></tr>`).join("")}</tbody></table>` : `<p class="muted" style="margin-top:8px">No rooms were read. Check the screenshot: if it shows prices, add CSS selectors under Advanced.</p>`}
+      <p class="muted" style="margin-top:8px;word-break:break-all">Link used: ${esc(P.result.url || "")}</p>
+      ${P.result.shot ? `<img class="shot" alt="Screenshot of the booking page the scraper saw" src="data:image/jpeg;base64,${P.result.shot}">` : ""}</div>` : ""}
+  </section>
+
+  <section class="panel pad" id="calendar"><h2>Calendar</h2>
+    <p class="muted">The calendar fills itself in over time. Watched rooms are always checked first. Then dates within 30 days are refreshed daily, 31–90 days every 3 days, 91–180 days weekly, and the rest every 2 weeks.</p>
+    <form id="cf" class="grid-form">
+      <label class="f">Days ahead<input name="boardDays" type="number" min="30" max="500" value="${s.boardDays}"></label>
+      <div class="span-all"><p style="font-weight:700;margin-bottom:6px">Checks each day <small class="muted">(Central time)</small></p><div class="checks">
+        <label><input type="checkbox" name="ck_morning" ${s.checks?.morning ? "checked" : ""}>Morning, 7:10am</label>
+        <label><input type="checkbox" name="ck_afternoon" ${s.checks?.afternoon ? "checked" : ""}>Afternoon, 1:10pm</label>
+        <label><input type="checkbox" name="ck_evening" ${s.checks?.evening ? "checked" : ""}>Evening, 7:10pm</label></div>
+        <p class="muted" style="margin-top:6px;font-size:15px">Watched rooms are checked every time and drop alerts go out after any check. Morning summaries and deadline reminders only go out in the morning.</p></div>
+      <label class="f">Searches in the morning check <small>~1,000 takes ~15 min</small><input name="dailyBudget" type="number" min="0" max="20000" value="${s.dailyBudget}"></label>
+      <label class="f">Searches in afternoon and evening checks <small>next 2 weeks first</small><input name="extraBudget" type="number" min="0" max="20000" value="${s.extraBudget ?? 2000}"></label>
+      <label class="f">Tabs at once <small>more is faster, 3–6 is polite</small><input name="concurrency" type="number" min="1" max="10" value="${s.scraper.concurrency || 5}"></label>
+      <div class="span-all"><p style="font-weight:650;margin-bottom:6px">Rates on the calendar</p><div class="checks">${R.map((r) => `<label><input type="checkbox" name="rate_${r.id}" ${s.boardRates.includes(r.id) ? "checked" : ""}>${esc(r.name)}</label>`).join("")}</div></div>
+      <div class="span-all"><p style="font-weight:650;margin-bottom:6px">Adults on the calendar <small class="muted">(1 and 2 adults pay the same)</small></p><div class="checks">${[2, 3, 4].map((a) => `<label><input type="checkbox" name="ad_${a}" ${s.boardAdults.includes(a) ? "checked" : ""}>${a === 2 ? "1–2" : a}</label>`).join("")}</div></div>
+      <p class="span-all muted" id="estimate"></p>
+      <div class="span-all"><button class="btn">Save calendar settings</button></div>
+    </form>
+  </section>
+
+  <section class="panel pad" id="sales"><h2>Sales</h2>
+    <p class="muted">Off by default, so everything is free. Switch it on to sell a one-time pass with Stripe. Stripe keys ${e.stripe ? '<span class="pill on">added</span>' : '<span class="pill off">not added yet</span>'}</p>
+    <form id="pf" class="grid-form">
+      <label class="toggle span-all"><input type="checkbox" name="salesEnabled" ${s.salesEnabled ? "checked" : ""} ${e.stripe ? "" : "disabled"}> Sell passes</label>
+      <label class="f">Pass price (dollars)<input name="price" inputmode="decimal" value="${(s.passPriceCents / 100).toFixed(2)}"></label>
+      <label class="f">Pass lasts (days)<input name="passDays" type="number" value="${s.passDays}"></label>
+      <label class="f">Rooms on a pass<input name="passWatchLimit" type="number" value="${s.passWatchLimit}"></label>
+      <label class="f">Rooms when free<input name="freeWatchLimit" type="number" value="${s.freeWatchLimit}"></label>
+      <label class="f">Free rooms checked only in the last … days <small>0 = always checked</small><input name="freeWindowDays" type="number" value="${s.freeWindowDays}"></label>
+      <div class="span-all"><button class="btn">Save sales settings</button></div>
+    </form>
+    <form id="comp" class="acts" style="margin-top:22px"><label class="f" style="flex:1;min-width:240px">Give someone a free pass <small>paste their private link or its id</small><input name="id"></label><button class="btn ghost">Switch free pass on or off</button></form>
+  </section>
+
+  <section class="panel pad" id="tipjar"><h2>Tip jar</h2>
+    <p class="muted">Off by default. When it's on, a tip jar shows at the bottom of the calendar page. Paste a Ko-fi, Buy Me a Coffee, PayPal or Venmo link, or leave the link empty to take tips by card through Stripe${e.stripe ? "" : " (needs your Stripe keys)"}.</p>
+    <form id="tjf" class="grid-form">
+      <label class="toggle span-all"><input type="checkbox" name="tipEnabled" ${s.tipEnabled ? "checked" : ""}> Show the tip jar</label>
+      <label class="f span-all">Tip link <small>optional</small><input name="tipUrl" value="${esc(s.tipUrl)}" placeholder="https://ko-fi.com/yourname"></label>
+      <label class="f span-all">Message<input name="tipMessage" value="${esc(s.tipMessage)}"></label>
+      <label class="f">Card tip amounts <small>dollars, separated by commas</small><input name="tipAmounts" value="${esc((s.tipAmounts || []).join(", "))}"></label>
+      <div class="span-all"><button class="btn">Save tip jar</button></div>
+    </form>
+  </section>
+
+  <section class="panel pad" id="email"><h2>Email</h2>
+    <p class="muted">Off by default. Phone push and Discord work without it. To switch on email, add RESEND_API_KEY and EMAIL_FROM on Netlify. Resend keys ${e.email ? '<span class="pill on">added</span>' : '<span class="pill off">not added yet</span>'}</p>
+    <form id="ef"><label class="toggle"><input type="checkbox" name="emailEnabled" ${s.emailEnabled ? "checked" : ""} ${e.email ? "" : "disabled"}> Let people get alerts by email</label>
+      <div class="acts"><button class="btn">Save email setting</button></div></form>
+  </section>
+
+  <section class="panel pad" id="site"><h2>Site</h2>
+    <form id="nf" class="grid-form">
+      <label class="f">Site name<input name="siteName" value="${esc(s.siteName)}"></label>
+      <label class="f span-all">Notice at the top of the calendar <small>leave empty to hide</small><input name="notice" value="${esc(s.notice)}" placeholder="e.g. Military rates are coming back next week."></label>
+      <div class="span-all"><button class="btn">Save</button></div></form>
+    <p style="margin-top:18px"><button class="link-btn" id="out">Sign out of admin</button></p>
+  </section>
+  </div></div>`;
+
+  // ---- wiring ----
+  $("#out").onclick = () => { try { sessionStorage.removeItem("rr.admin2"); } catch {} pw = ""; login(); };
+  $("#reload").onclick = load;
+  $("#runNow").onclick = async () => { try { toast((await call({ action: "run" })).message); } catch (x) { toast(x.message); } };
+  $("#tf").onsubmit = async (ev) => { ev.preventDefault(); const v = Object.fromEntries(new FormData(ev.target)); try { toast((await call({ action: "probe", ...v })).message); } catch (x) { toast(x.message); } };
+
+  let proposed = null;
+  $("#analyze").onclick = () => {
+    const f = $("#sf"), hl = {}, rl = {};
+    H.forEach((h) => (hl[h.id] = f[`h_${h.id}`].value));
+    R.forEach((r) => r.id !== "standard" && (rl[r.id] = f[`r_${r.id}`].value));
+    $("#sErr").textContent = "";
+    const anyRate = Object.values(rl).some((x) => x.trim());
+    const anyHotel = Object.values(hl).some((x) => x.trim());
+    const clicks = Object.fromEntries(R.filter((r) => r.id !== "standard").map((r) => [r.id, f[`c_${r.id}`].value.trim()]));
+    try {
+      if (!anyHotel && !anyRate) { proposed = { rateClickText: clicks }; }
+      else {
+        if (!anyHotel) throw new Error("Paste at least one hotel's normal search link too, so the rate links can be compared with it.");
+        const c = buildScraperConfig(hl, rl);
+        proposed = {
+          urlTemplate: c.urlTemplate, dateFormat: c.dateFormat,
+          hotelCodes: { ...s.scraper.hotelCodes, ...c.hotelCodes },
+          rateParams: { ...s.scraper.rateParams, ...c.rateParams },
+          rateClickText: clicks,
+        };
+        proposed._notes = c.notes;
+      }
+      const notes = proposed._notes || []; delete proposed._notes;
+      $("#sOut").innerHTML = `<div class="out" style="margin-top:16px"><p style="font-weight:650;margin-bottom:8px">Here's what it found. Check it looks right, then save.</p>
+        ${proposed.urlTemplate ? `<p>Link pattern:</p><code>${esc(proposed.urlTemplate)}</code><p style="margin-top:8px">Date style: <b>${esc(proposed.dateFormat)}</b></p>` : ""}
+        ${proposed.hotelCodes ? `<p style="margin-top:8px">Hotel codes: ${Object.entries(proposed.hotelCodes).map(([k, v]) => `${esc(k)} = <b>${esc(v)}</b>`).join(", ")}</p>` : ""}
+        ${proposed.rateParams ? `<p style="margin-top:8px">Rate codes: ${Object.entries(proposed.rateParams).filter(([, v]) => Object.keys(v).length).map(([k, v]) => `${esc(k)} adds <b>${esc(Object.entries(v).map(([a, b]) => b === null ? `no ${a}` : `${a}=${b}`).join(", "))}</b>`).join("; ") || "none yet"}</p>` : ""}
+        ${notes.map((n) => `<p class="err" style="margin-top:8px">${esc(n)}</p>`).join("")}
+        <div class="acts"><button class="btn lagoon" id="saveS">Save scraper setup</button></div></div>`;
+      $("#saveS").onclick = () => save({ scraper: proposed }, "Scraper setup saved. Run a test search next.");
+    } catch (x) { $("#sErr").textContent = x.message; }
+  };
+  $("#saveRaw").onclick = () => { try { save({ scraper: JSON.parse($("#raw").value) }); } catch { toast("That isn't valid settings text (JSON)."); } };
+
+  const est = () => {
+    if (!$("#cf").ck_morning) return;
+    const f = $("#cf"), rates = R.filter((r) => f[`rate_${r.id}`].checked).length, ads = [2, 3, 4].filter((a) => f[`ad_${a}`].checked).length;
+    const days = Number(f.boardDays.value), hotels = Math.max(1, codes);
+    const per = (d) => (d <= 30 ? 1 : d <= 90 ? 1 / 3 : d <= 180 ? 1 / 7 : 1 / 14);
+    let daily = 0; for (let d = 0; d < days; d++) daily += per(d);
+    const need = Math.round(daily * rates * ads * hotels);
+    const mins = Math.round((Math.min(need, f.dailyBudget.value) * 4.5) / Math.max(1, f.concurrency.value) / 60);
+    $("#estimate").textContent = `To keep everything fresh: about ${need.toLocaleString()} searches a day (${hotels} hotels × ${rates} rates × ${ads} adult options). With your settings, a morning check takes about ${mins} minutes. GitHub allows up to 6 hours; public repositories run free.`;
+  };
+  $("#cf").oninput = est; est();
+  $("#cf").onsubmit = (ev) => {
+    ev.preventDefault(); const f = ev.target;
+    save({ boardDays: f.boardDays.value, dailyBudget: f.dailyBudget.value, extraBudget: f.extraBudget.value,
+      checks: { morning: f.ck_morning.checked, afternoon: f.ck_afternoon.checked, evening: f.ck_evening.checked }, boardRates: R.filter((r) => f[`rate_${r.id}`].checked).map((r) => r.id),
+      boardAdults: [2, 3, 4].filter((a) => f[`ad_${a}`].checked), scraper: { concurrency: Math.max(1, Math.min(10, Number(f.concurrency.value) || 5)) } });
+  };
+  $("#pf").onsubmit = (ev) => {
+    ev.preventDefault(); const f = ev.target;
+    save({ salesEnabled: f.salesEnabled.checked, passPriceCents: Math.round(parseFloat(f.price.value) * 100), passDays: f.passDays.value,
+      passWatchLimit: f.passWatchLimit.value, freeWatchLimit: f.freeWatchLimit.value, freeWindowDays: f.freeWindowDays.value });
+  };
+  $("#comp").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const id = (ev.target.id.value.match(/k=([\w-]+)/)?.[1]) || ev.target.id.value.trim();
+    try { const r = await call({ action: "comp", keyId: id }); toast(r.comped ? "Free pass switched on" : "Free pass switched off"); } catch (x) { toast(x.message); }
+  };
+  $("#tjf").onsubmit = (ev) => { ev.preventDefault(); const f = ev.target; save({ tipEnabled: f.tipEnabled.checked, tipUrl: f.tipUrl.value.trim(), tipMessage: f.tipMessage.value.trim(), tipAmounts: f.tipAmounts.value }); };
+  $("#ef").onsubmit = (ev) => { ev.preventDefault(); save({ emailEnabled: ev.target.emailEnabled.checked }); };
+  $("#nf").onsubmit = (ev) => { ev.preventDefault(); save({ siteName: ev.target.siteName.value.trim() || "RateRaven", notice: ev.target.notice.value.trim() }); };
+}
+load();
+</script>
+</body>
+</html>

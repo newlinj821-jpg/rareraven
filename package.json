@@ -1,0 +1,12 @@
+{
+  "name": "rateraven",
+  "private": true,
+  "type": "module",
+  "description": "RateRaven — watches Orlando on-site resort rates every morning.",
+  "scripts": {
+    "test": "node test/site-test.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

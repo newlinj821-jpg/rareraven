@@ -1,0 +1,12 @@
+{
+  "name": "RateRaven",
+  "short_name": "RateRaven",
+  "description": "Universal Orlando hotel rates, checked three times a day.",
+  "display": "standalone",
+  "background_color": "#c4e8e3",
+  "theme_color": "#0d3b45",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
