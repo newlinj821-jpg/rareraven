@@ -15,7 +15,7 @@ function setPublicMessage(message=''){if(publicStatus) publicStatus.textContent=
 
 async function launch(session){
   setPrivateMessage('');setPublicMessage('Loading CoasterVerse…');
-  const app=await import('./app.js?v=23');
+  const app=await import('./app.js?v=24');
   if(typeof app.boot!=='function') throw new Error('CoasterVerse application failed to initialize.');
   await app.boot(session);
 }
