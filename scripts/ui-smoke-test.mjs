@@ -10,7 +10,7 @@ const css=read('public/styles.css');
 const data=read('public/data.js');
 
 const assert=(condition,message)=>{if(!condition) throw new Error(message)};
-for(const file of ['public/app.js','public/login.js','public/meta.js','public/public-api.js','public/storage.js']){
+for(const file of ['public/app.js','public/login.js','public/meta.js','public/public-api.js','public/image-api.js','public/storage.js','netlify/functions/resolve-image.mjs']){
   execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
 }
 
@@ -41,9 +41,14 @@ assert(app.includes('function startTrip'),'Park check-in logic missing');
 assert(login.includes('requestEmailLogin'),'Resend public login UI missing');
 assert(api.includes('getCloudVault')&&api.includes('saveCloudVault'),'Netlify Blobs public vault sync client missing');
 const meta=read('public/meta.js');
-assert(meta.includes('FALLBACK_VISUALS'),'Real-photo fallback pool missing');
-assert(meta.includes('exact:Boolean(exact)'),'Coaster visual exact/fallback metadata missing');
+assert(!meta.includes('FALLBACK_VISUALS'),'Random unrelated coaster photo fallbacks must never return');
+assert(meta.includes('creditHeroVisual'),'Independent theme-park credit hero missing');
+assert(app.includes('resolveExactImage')&&app.includes('hydrateExactImages'),'Strict exact-image hydration missing');
+assert(app.includes('creditHeroVisual(1600)'),'Credit hero must not use the most-ridden coaster image');
+const resolver=read('netlify/functions/resolve-image.mjs');
+assert(resolver.includes('scoreCandidate')&&resolver.includes('parkCov'),'Exact image resolver must verify coaster name and park');
+assert(resolver.includes("getStore('coasterverse-images')"),'Resolved image cache missing');
 assert(!app.includes('coaster-image generated'),'Generated coaster art fallback must not return');
 assert(!data.includes('DecompressionStream'),'Compressed runtime catalog loader must not return');
 assert(data.includes("./db/parks.js")&&data.includes("./db/coasters-5.js"),'Uncompressed catalog modules missing');
-console.log('OK: CoasterVerse v5 UI/public-mode/check-in smoke checks passed.');
+console.log('OK: CoasterVerse exact-photo/public-mode/check-in smoke checks passed.');
