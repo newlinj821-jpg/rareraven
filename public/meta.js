@@ -77,9 +77,9 @@ export function coasterVisual(id,width=900){
   };
 }
 
-export function parkVisual(parkId,coasters=[],width=1200){
-  const featured=PARK_FEATURE[parkId]||coasters.find(c=>VISUALS[c.id])?.id;
-  return featured?coasterVisual(featured,width):null;
+export function parkVisual(){
+  // Park imagery is resolved by exact park name through the server-side resolver.
+  return null;
 }
 
 export function creditHeroVisual(width=1600){
