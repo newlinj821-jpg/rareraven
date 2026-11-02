@@ -25,11 +25,10 @@ When creating a new Netlify site from GitHub:
 5. Add these environment variables in Netlify:
    - `COASTERVERSE_USERNAME` = `eros69`
    - `COASTERVERSE_PASSWORD` = `eros69`
-   - `COASTERVERSE_SESSION_SECRET = a long random secret (32+ characters)
+   - `COASTERVERSE_SESSION_SECRET` = a long random secret (32+ characters)
 6. Deploy.
 
-The password is intentionally *
-not committed to GitHub**. The `rareraven` repository is public, and committing a login password would make the private gate meaningless.
+The password is intentionally **not committed to GitHub**. The `rareraven` repository is public, and committing a login password would make the private gate meaningless.
 
 ## Current storage model
 Ride data is stored in the browser via the `storage.js` adapter. Use Export before moving devices. A future public version can swap this adapter for Supabase/Postgres while preserving the tracker UI and coaster model.
