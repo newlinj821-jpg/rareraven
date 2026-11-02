@@ -126,3 +126,101 @@
   .hero-inline-stats span{font-size:9px;padding:7px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mobile-nav{bottom:calc(10px + env(safe-area-inset-bottom))!important}
 }
+
+
+/* v5.2 strict exact-photo system */
+.exact-photo-loading{
+  position:relative;
+  overflow:hidden;
+  background:#0d1418;
+}
+.photo-shimmer{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background:
+    linear-gradient(110deg,transparent 20%,#ffffff0b 38%,#ffffff18 48%,#ffffff0b 58%,transparent 80%),
+    radial-gradient(circle at 20% 20%,#24351f,#0b1115 70%);
+  background-size:220% 100%,100% 100%;
+  animation:photoResolve 1.45s linear infinite;
+}
+.photo-shimmer span{
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:1.2px;
+  color:#9bad9f;
+  text-transform:uppercase;
+}
+@keyframes photoResolve{
+  from{background-position:180% 0,0 0}
+  to{background-position:-40% 0,0 0}
+}
+.exact-photo-ready img{display:block;width:100%;height:100%;object-fit:cover}
+.park-photo-shell{position:absolute;inset:0;overflow:hidden}
+.park-photo-shell img{width:100%;height:100%;object-fit:cover}
+.park-photo-shell .photo-credit{z-index:3}
+
+.coaster-image.thumb{
+  width:58px;
+  height:58px;
+  min-height:58px;
+  flex:0 0 58px;
+  border-radius:10px;
+}
+.coaster-image.thumb .photo-credit{display:none}
+.photo-row{
+  align-items:center!important;
+}
+.timeline-item.photo-row{
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr) auto;
+  gap:12px;
+  padding:10px 4px;
+}
+.timeline-ride.photo-row{
+  grid-template-columns:58px minmax(0,1fr) auto;
+  gap:12px;
+}
+.photo-row-copy{min-width:0}
+.photo-row-copy strong,
+.photo-row-copy span{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.timeline-dot{display:none!important}
+
+.mini-park{
+  grid-template-columns:64px minmax(0,1fr) 48px!important;
+  padding:8px!important;
+  overflow:hidden;
+}
+.mini-park .park-photo-shell{
+  position:relative;
+  width:64px;
+  height:58px;
+  border-radius:10px;
+  grid-column:1;
+  grid-row:1;
+}
+.mini-park .park-photo-shell .photo-credit{display:none}
+.mini-park-copy{min-width:0}
+.mini-park-copy strong,
+.mini-park-copy span{display:block}
+.mini-park-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-park-copy .mini-progress{margin-top:7px}
+.mini-park>b{grid-column:3}
+
+.park-card-visual>.park-photo-shell,
+.park-hero-photo>.park-photo-shell{position:absolute;inset:0}
+.park-hero-photo>.park-photo-shell{border-radius:0}
+
+@media(max-width:700px){
+  .timeline-item.photo-row{grid-template-columns:52px minmax(0,1fr) auto}
+  .timeline-ride.photo-row{grid-template-columns:52px minmax(0,1fr) auto}
+  .coaster-image.thumb{width:52px;height:52px;min-height:52px}
+  .mini-park{grid-template-columns:58px minmax(0,1fr) 42px!important}
+  .mini-park .park-photo-shell{width:58px;height:54px}
+}
