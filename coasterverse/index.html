@@ -1,106 +1,36 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#090b0f" />
-  <meta name="description" content="Private roller coaster credit and ride tracker." />
-  <title>CoasterVerse — Private Tracker</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080b0f">
+<title>CoasterVerse — Eros’ Coaster Tracker</title><link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div id="loginScreen" class="login-shell">
-    <div class="login-card">
-      <div class="brand-mark" aria-hidden="true">CV</div>
-      <div>
-        <p class="eyebrow">PRIVATE TRACKER</p>
-        <h1>COASTER<span>VERSE</span></h1>
-        <p class="muted">Credits are unique coasters. Rides are every lap.</p>
-      </div>
-      <form id="loginForm" class="login-form">
-        <label>Username<input id="username" autocomplete="username" value="eros69" required /></label>
-        <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
-        <button class="primary wide" type="submit">Enter CoasterVerse</button>
-        <p id="loginError" class="error" role="alert"></p>
-      </form>
-    </div>
-  </div>
-
-  <div id="app" class="app-shell hidden">
-    <header class="topbar">
-      <div class="brand-inline"><div class="brand-mark small">CV</div><div><strong>COASTER<span>VERSE</span></strong><small>PRIVATE // EROS69</small></div></div>
-      <div class="header-actions">
-        <button id="exportBtn" class="ghost">Export</button>
-        <label class="ghost file-btn">Import<input id="importInput" type="file" accept="application/json" hidden></label>
-        <button id="logoutBtn" class="ghost danger">Log out</button>
-      </div>
-    </header>
-
-    <main>
-      <section class="hero-grid">
-        <div class="hero-card hero-main">
-          <div>
-            <p class="eyebrow">YOUR COASTER PASSPORT</p>
-            <h2><span id="creditCount">0</span> credits. <span id="rideCount">0</span> rides.</h2>
-            <p class="muted">Tap any coaster to log a lap. Your first tap earns the credit automatically.</p>
-          </div>
-          <div class="hero-badge"><span id="favoriteRideCount">0×</span><small>TOP RIDE</small><strong id="favoriteRideName">—</strong></div>
-        </div>
-        <div class="stat-card"><span id="parkCount">0</span><small>PARKS RIDDEN</small></div>
-        <div class="stat-card"><span id="typeCount">0</span><small>COASTER TYPES</small></div>
-      </section>
-
-      <nav class="tabs" aria-label="CoasterVerse sections">
-        <button class="tab active" data-tab="tracker">Tracker</button>
-        <button class="tab" data-tab="leaderboard">Leaderboards</button>
-        <button class="tab" data-tab="history">Ride log</button>
-        <button class="tab" data-tab="manage">Manage</button>
-      </nav>
-
-      <section id="trackerTab" class="tab-panel active">
-        <div class="toolbar">
-          <div class="search-wrap"><input id="searchInput" type="search" placeholder="Search coaster, park, city, type…" /></div>
-          <select id="parkFilter"><option value="all">All parks</option></select>
-          <select id="statusFilter"><option value="all">All coasters</option><option value="ridden">Ridden</option><option value="unridden">Not ridden</option></select>
-        </div>
-        <div id="parkSections" class="park-sections"></div>
-      </section>
-
-      <section id="leaderboardTab" class="tab-panel">
-        <div class="section-head"><div><p class="eyebrow">PERSONAL LEADERBOARDS</p><h2>What you actually ride</h2></div></div>
-        <div class="leader-grid">
-          <div class="panel"><h3>Most ridden coasters</h3><div id="coasterLeaderboard" class="ranking-list"></div></div>
-          <div class="panel"><h3>Most ridden parks</h3><div id="parkLeaderboard" class="ranking-list"></div></div>
-          <div class="panel"><h3>Most ridden classifications</h3><div id="typeLeaderboard" class="ranking-list"></div></div>
-        </div>
-      </section>
-
-      <section id="historyTab" class="tab-panel">
-        <div class="section-head"><div><p class="eyebrow">RIDE LOG</p><h2>Every lap, newest first</h2></div><button id="clearHistoryBtn" class="ghost danger">Clear ride history</button></div>
-        <div id="historyList" class="history-list"></div>
-      </section>
-
-      <section id="manageTab" class="tab-panel">
-        <div class="section-head"><div><p class="eyebrow">PRIVATE DATABASE</p><h2>Add a missing coaster</h2><p class="muted">Only roller coasters belong here. Custom entries appear alongside the built-in catalog.</p></div></div>
-        <form id="addCoasterForm" class="panel form-grid">
-          <label>Coaster name<input id="customName" required placeholder="e.g. The Voyage" /></label>
-          <label>Park<input id="customPark" required placeholder="e.g. Holiday World" /></label>
-          <label>Park location<input id="customLocation" required placeholder="e.g. Santa Claus, Indiana" /></label>
-          <label>Type / classification<input id="customType" required placeholder="e.g. Wood · Terrain" /></label>
-          <button class="primary" type="submit">Add coaster</button>
-        </form>
-        <div class="panel data-panel">
-          <h3>Data controls</h3>
-          <p class="muted">Private version stores ride data in this browser. Export a JSON backup before switching devices. The codebase separates auth and storage so cloud accounts can replace this later.</p>
-          <button id="resetBtn" class="ghost danger">Reset all CoasterVerse data</button>
-        </div>
-      </section>
-    </main>
-
-    <div id="toast" class="toast" role="status" aria-live="polite"><div><strong id="toastTitle">Ride logged</strong><span id="toastText"></span></div><button id="undoBtn">Undo</button></div>
-  </div>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+<div id="loginScreen" class="auth-shell">
+  <section class="auth-card">
+    <div class="logo">COASTER<span>//</span>VERSE</div><div class="auth-kicker">PRIVATE TRACKER</div>
+    <h1>Your coaster history.<br><em>One tap at a time.</em></h1>
+    <form id="loginForm"><label>Username<input id="username" autocomplete="username" value="eros69" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button class="primary big" type="submit">ENTER COASTERVERSE</button><div id="loginError" class="error"></div></form>
+  </section>
+</div>
+<div id="app" hidden>
+<header class="topbar"><button class="brand nav-btn" data-view="dashboard">COASTER<span>//</span>VERSE</button><nav><button class="nav-btn active" data-view="dashboard">Home</button><button class="nav-btn" data-view="parks">Parks</button><button class="nav-btn" data-view="credits">Credits</button><button class="nav-btn" data-view="leaderboard">Leaderboard</button></nav><button id="logout" class="icon-btn">Log out</button></header>
+<main class="shell">
+<section id="dashboard" class="view active-view">
+  <div class="hero"><div><div class="kicker">EROS’ COASTER LOG</div><h2>Tap. Ride. <em>Count it.</em></h2><p>One tap logs one ride. Your first ride on a coaster automatically earns the credit.</p></div><div class="hero-badge"><span id="heroCredits">0</span><small>UNIQUE CREDITS</small></div></div>
+  <div class="stats"><article><strong id="statCredits">0</strong><span>Unique credits</span></article><article><strong id="statRides">0</strong><span>Total rides</span></article><article><strong id="statParks">0</strong><span>Parks ridden</span></article><article><strong id="statTop">—</strong><span>Most ridden</span></article></div>
+  <section class="quick-panel"><div class="section-head"><div><div class="kicker">FASTEST WAY IN</div><h3>Quick log</h3></div><span class="hint">Tap the coaster. Done.</span></div><div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search coaster or park…" autocomplete="off"><button id="clearSearch" class="clear">×</button></div><div id="quickResults" class="coaster-list"></div></section>
+  <section><div class="section-head"><div><div class="kicker">RECENT</div><h3>Latest rides</h3></div></div><div id="recentRides" class="timeline"></div></section>
+</section>
+<section id="parks" class="view"><div class="page-title"><div><div class="kicker">U.S. ROLLER COASTERS ONLY</div><h2>Park database</h2><p>63 curated U.S. destination and enthusiast parks. Tap any coaster to log it.</p></div><button id="addCustomBtn" class="secondary">+ Add missing coaster</button></div><input id="parkSearch" class="search" placeholder="Find a park…"><div id="parkGrid" class="park-grid"></div></section>
+<section id="parkDetail" class="view"><button id="backParks" class="back">← All parks</button><div id="parkHeader"></div><div id="parkCoasters" class="coaster-list"></div></section>
+<section id="credits" class="view"><div class="page-title"><div><div class="kicker">YOUR COLLECTION</div><h2>Credits</h2><p>Every coaster you have ridden at least once.</p></div></div><input id="creditSearch" class="search" placeholder="Search your credits…"><div id="creditList" class="coaster-list"></div></section>
+<section id="leaderboard" class="view"><div class="page-title"><div><div class="kicker">RIDE COUNTS</div><h2>Leaderboard</h2><p>Your most-ridden coasters, parks and classifications.</p></div></div><div class="leader-grid"><div class="board"><h3>Most ridden coasters</h3><div id="rideLeaderboard"></div></div><div class="board"><h3>Most ridden parks</h3><div id="parkLeaderboard"></div></div><div class="board"><h3>Top classifications</h3><div id="classLeaderboard"></div></div></div></section>
+<section id="settings" class="view"></section>
+</main>
+<button id="floatingAdd" class="fab" aria-label="Quick log a ride">+1</button>
+<div id="toast" class="toast" aria-live="polite"></div>
+<div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close">×</button><div id="modalBody"></div></div></div>
+<footer><span>COASTER//VERSE PRIVATE FINAL</span><div><button id="exportBtn" class="text-btn">Export backup</button><button id="importBtn" class="text-btn">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></footer>
+</div>
+<script type="module" src="./app.js"></script>
+</body></html>
