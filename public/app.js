@@ -1,7 +1,7 @@
 import {PARKS,COASTERS,formatLocation} from './data.js';
 import {loadVault,saveVault,exportVault,importVaultText} from './storage.js';
-import {manufacturerFor,coasterVisual,parkVisual,shortType,creditHeroVisual} from './meta.js';
-import {resolveExactImage,getCachedImage} from './image-api.js';
+import {manufacturerFor,coasterVisual,parkVisual,shortType,creditHeroVisual} from './meta.js?v=24';
+import {resolveExactImage,getCachedImage} from './image-api.js?v=24';
 import {getPublicConfig,getPublicLeaderboard,setPublicMode,getOwnerPublicMode,publishProfile,clearPublicSession,getCloudVault,saveCloudVault} from './public-api.js';
 
 const $=s=>document.querySelector(s);
