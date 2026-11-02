@@ -1,6 +1,7 @@
 import {PARKS,COASTERS,formatLocation} from './data.js';
 import {loadVault,saveVault,exportVault,importVaultText} from './storage.js';
-import {manufacturerFor,coasterVisual,parkVisual,shortType} from './meta.js';
+import {manufacturerFor,coasterVisual,parkVisual,shortType,creditHeroVisual} from './meta.js';
+import {resolveExactImage,getCachedImage} from './image-api.js';
 import {getPublicConfig,getPublicLeaderboard,setPublicMode,getOwnerPublicMode,publishProfile,clearPublicSession,getCloudVault,saveCloudVault} from './public-api.js';
 
 const $=s=>document.querySelector(s);
@@ -108,12 +109,46 @@ async function logRide(coasterId,date=today()){
 function setRating(id,patch){vault.ratings[id]={...ratingFor(id),...patch}}
 function toggleFavorite(id){setRating(id,{favorite:!ratingFor(id).favorite});persist()}
 
-function coasterArt(c,size='card'){
-  const visual=coasterVisual(c.id,size==='hero'?1400:500);
-  const alt=visual.exact?c.name:'Roller coaster photo';
-  return `<div class="coaster-image ${size}"><img src="${esc(visual.url)}" alt="${esc(alt)}" loading="lazy"><span class="photo-credit">${esc(visual.exact?visual.credit:'Coaster photo · '+visual.credit)}</span></div>`;
+function photoShell({type,id,name,park='',size='card',visual=null,eager=false}){
+  const className=type==='park'?'park-photo-shell':'coaster-image '+size;
+  if(visual?.url){
+    return `<div class="${className} exact-photo-ready"><img src="${esc(visual.url)}" alt="${esc(name)}" loading="${eager?'eager':'lazy'}"><span class="photo-credit">${esc(visual.credit||visual.source||'Wikimedia Commons')}</span></div>`;
+  }
+  return `<div class="${className} exact-photo-loading" data-exact-image data-photo-type="${esc(type)}" data-photo-id="${esc(id)}" data-photo-name="${esc(name)}" data-photo-park="${esc(park)}" data-photo-size="${size}"><div class="photo-shimmer"><span>Finding exact photo…</span></div></div>`;
 }
 
+function coasterArt(c,size='card'){
+  const p=parkMap().get(c.parkId);
+  const visual=coasterVisual(c.id,size==='hero'?1400:600)||getCachedImage('coaster',c.id);
+  return photoShell({type:'coaster',id:c.id,name:c.name,park:p?.name||'',size,visual,eager:size==='hero'});
+}
+
+function parkArt(p,size='card',eager=false){
+  const visual=parkVisual(p.id,[],size==='hero'?1400:900)||getCachedImage('park',p.id);
+  return photoShell({type:'park',id:p.id,name:p.name,size,visual,eager});
+}
+
+async function hydrateExactImages(root=document){
+  const targets=[...root.querySelectorAll('[data-exact-image]')];
+  await Promise.allSettled(targets.map(async el=>{
+    if(el.dataset.resolving==='1') return;
+    el.dataset.resolving='1';
+    try{
+      const image=await resolveExactImage({type:el.dataset.photoType||'coaster',id:el.dataset.photoId,name:el.dataset.photoName,park:el.dataset.photoPark||'',width:el.dataset.photoSize==='hero'?1400:700});
+      if(!el.isConnected) return;
+      el.classList.remove('exact-photo-loading');
+      el.classList.add('exact-photo-ready');
+      el.innerHTML=`<img src="${esc(image.url)}" alt="${esc(el.dataset.photoName)}" loading="${el.dataset.photoSize==='hero'?'eager':'lazy'}"><span class="photo-credit">${esc(image.credit||image.source||'Wikimedia Commons')}</span>`;
+      el.removeAttribute('data-exact-image');
+    }catch(error){
+      console.warn('Exact image lookup pending',el.dataset.photoName,error);
+      el.dataset.resolving='0';
+      const attempts=Number(el.dataset.photoAttempts||0)+1;
+      el.dataset.photoAttempts=String(attempts);
+      if(attempts<3&&el.isConnected) setTimeout(()=>hydrateExactImages(el.parentElement||document),2200*attempts);
+    }
+  }));
+}
 function coasterCard(c){
   const p=parkMap().get(c.parkId),n=countFor(c.id),r=ratingFor(c.id),manufacturer=manufacturerFor(c);
   return `<article class="coaster-card">
@@ -131,6 +166,7 @@ function bindCoasterCards(root=document){
   root.querySelectorAll('[data-log]').forEach(b=>b.onclick=e=>{e.stopPropagation();logRide(b.dataset.log)});
   root.querySelectorAll('[data-info]').forEach(b=>b.onclick=e=>{e.stopPropagation();openCoaster(b.dataset.info)});
   root.querySelectorAll('[data-favorite]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleFavorite(b.dataset.favorite)});
+  hydrateExactImages(root);
 }
 
 function basicStats(){
