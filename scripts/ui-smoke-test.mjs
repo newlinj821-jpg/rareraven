@@ -28,10 +28,14 @@ assert(app.includes('function generateAd()'),'Share Studio ad generator missing'
 assert(app.includes('function parkCompletion()'),'Park completion logic missing');
 assert(app.includes('function badges()'),'Achievement logic missing');
 assert(app.includes('function yearStats('),'Year-in-coasters logic missing');
+assert(app.includes('function completedSessions()'),'Completed park-session source missing');
+assert(app.includes('checkedInAt')&&app.includes('checkedOutAt'),'Check-in/check-out timestamps missing');
+assert(app.includes("r.tripId&&sessionIds.has(r.tripId)"),'Year stats must only count rides attached to completed park sessions');
+assert(!app.includes("days.set(ride.date"),'Year stats must not derive busiest day from raw ride/credit entry dates');
 assert(app.includes('function renderTimeline()'),'Timeline logic missing');
-assert(app.includes('function startTrip'),'Trip mode logic missing');
+assert(app.includes('function startTrip'),'Park check-in logic missing');
 assert(login.includes('requestEmailLogin'),'Resend public login UI missing');
 assert(api.includes('getCloudVault')&&api.includes('saveCloudVault'),'Netlify Blobs public vault sync client missing');
 assert(!data.includes('DecompressionStream'),'Compressed runtime catalog loader must not return');
 assert(data.includes("./db/parks.js")&&data.includes("./db/coasters-5.js"),'Uncompressed catalog modules missing');
-console.log('OK: CoasterVerse v5 UI/public-mode smoke checks passed.');
+console.log('OK: CoasterVerse v5 UI/public-mode/check-in smoke checks passed.');
