@@ -18,3 +18,111 @@
 @media(max-width:1080px){.desktop-nav{display:none}.credit-showcase{grid-template-columns:1fr}.coaster-motion{height:190px}.leader-grid,.settings-grid{grid-template-columns:1fr 1fr}.feature-grid{grid-template-columns:repeat(3,1fr)}.park-grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.badge-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){body{padding-bottom:72px}.topbar{height:60px;padding:0 14px}.brand{font-size:18px}.icon-btn{padding:8px 10px;font-size:11px}.shell{padding:18px 12px 92px}.page-title{display:block;margin-top:8px}.page-title h2{letter-spacing:-2.7px}.page-title .secondary{margin-top:10px}.credit-showcase{min-height:290px;padding:24px 20px;border-radius:24px}.credit-number{font-size:118px;letter-spacing:-8px}.coaster-motion{height:145px;margin-top:-12px}.stats{grid-template-columns:repeat(2,1fr);gap:8px}.stats article{padding:14px}.stats strong{font-size:29px}.panel,.quick-panel,.board{padding:15px;border-radius:18px}.park-grid{grid-template-columns:1fr;gap:10px}.park-card{min-height:250px}.park-card-visual{height:128px}.coaster-card{grid-template-columns:1fr auto}.coaster-card-main{grid-template-columns:96px 1fr;gap:10px}.coaster-image{min-height:118px}.coaster-name{font-size:15px}.coaster-card-copy{padding:11px 0}.tag{font-size:8px}.tag.maker{display:none}.card-metrics{gap:7px}.coaster-card-actions{padding-right:8px}.plus{min-width:56px;height:52px}.favorite{width:56px}.toolbar{grid-template-columns:1fr}.leader-grid,.settings-grid,.share-grid{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}.badge-grid{grid-template-columns:1fr}.trip-form{grid-template-columns:1fr}.trip-live{grid-template-columns:1fr auto}.trip-live .danger{grid-column:1/-1}.timeline-day{grid-template-columns:1fr;gap:5px}.timeline-date{position:static}.park-hero{min-height:380px}.park-hero-content{min-height:380px;align-items:flex-end}.completion-dial{width:112px;height:112px}.park-hero-content h2{font-size:42px;letter-spacing:-2.5px}.filter-tabs{top:65px}.sticky-back{top:65px}.detail-facts{grid-template-columns:repeat(2,1fr)}.detail-form{grid-template-columns:1fr}.rating-buttons{grid-template-columns:repeat(5,1fr)}.modal{padding:16px;border-radius:20px}.modal-hero .coaster-image.hero{height:220px}.mobile-nav{position:fixed;display:grid;grid-template-columns:1fr 1fr 76px 1fr 1fr;left:8px;right:8px;bottom:8px;height:64px;z-index:60;background:#0d1317ec;border:1px solid #2b373f;border-radius:20px;padding:5px;backdrop-filter:blur(18px);box-shadow:0 12px 40px #000b}.mobile-tab,.mobile-log{background:none;color:#7f8d98;border-radius:14px;font-size:9px;font-weight:900;display:grid;place-items:center;align-content:center;gap:3px}.mobile-tab span{font-size:18px}.mobile-tab.active{color:white;background:#171f26}.mobile-log{background:var(--acid);color:#0d1406;transform:translateY(-15px);height:66px;border:5px solid #090d11;border-radius:20px;box-shadow:0 10px 30px #0008}.mobile-log span{font-size:18px;font-weight:1000}.toast{bottom:82px}.photo-credit{display:none}footer{display:none}.ad-preview-wrap{padding:7px}.share-studio textarea{min-height:130px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* v5.1 photo-first compact hero */
+.credit-showcase{
+  position:relative!important;
+  min-height:290px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  overflow:hidden!important;
+  padding:0!important;
+  border-radius:26px!important;
+  background:#08100c!important;
+}
+.credit-showcase:after{display:none!important}
+.credit-photo{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center 46%;
+  animation:heroPhotoDrift 16s ease-in-out infinite alternate;
+  transform:scale(1.03);
+}
+.credit-shade{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,#05080bec 0%,#05080bbb 45%,#05080b35 78%,#05080b26 100%),
+    linear-gradient(0deg,#05080bdc 0%,transparent 58%);
+}
+.credit-copy{
+  position:relative!important;z-index:3!important;
+  padding:28px 30px 30px!important;
+  max-width:620px!important;
+}
+.credit-number{
+  font-size:clamp(92px,15vw,158px)!important;
+  line-height:.78!important;
+  letter-spacing:-8px!important;
+  text-shadow:0 8px 45px #000!important;
+  margin:8px 0 18px!important;
+}
+.credit-label{margin-top:0!important;text-shadow:0 2px 8px #000}
+.hero-inline-stats{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:16px
+}
+.hero-inline-stats span{
+  background:#05090cc7;border:1px solid #ffffff22;color:#dfe8ef;
+  padding:8px 11px;border-radius:999px;font-size:11px;font-weight:800;
+  backdrop-filter:blur(8px)
+}
+.hero-inline-stats strong{color:var(--acid)}
+.coaster-motion{display:none!important}
+.velocity-line{
+  position:absolute;z-index:4;left:0;right:0;bottom:0;height:56px;
+  overflow:hidden;pointer-events:none
+}
+.velocity-rail{
+  position:absolute;left:-3%;right:-3%;bottom:18px;height:4px;
+  background:linear-gradient(90deg,transparent,var(--acid) 15%,var(--acid) 85%,transparent);
+  box-shadow:0 0 18px #b8ff4a80;
+  transform:skewY(-1deg)
+}
+.velocity-rail:after{
+  content:"";position:absolute;left:0;right:0;top:10px;height:2px;
+  background:repeating-linear-gradient(90deg,#9dcf70 0 8px,transparent 8px 17px);
+  opacity:.5
+}
+.velocity-train{
+  position:absolute;bottom:24px;left:-170px;display:flex;gap:4px;
+  animation:velocityPass 5.8s cubic-bezier(.35,.05,.12,1) infinite;
+  filter:drop-shadow(0 5px 10px #000)
+}
+.velocity-train i{
+  display:block;width:34px;height:18px;background:var(--acid);
+  border:3px solid #080c08;border-radius:7px 8px 4px 4px;
+  transform:skewX(-8deg)
+}
+@keyframes velocityPass{
+  0%,8%{transform:translateX(-30px);opacity:0}
+  12%{opacity:1}
+  58%{transform:translateX(calc(100vw + 230px));opacity:1}
+  62%,100%{transform:translateX(calc(100vw + 270px));opacity:0}
+}
+@keyframes heroPhotoDrift{
+  from{transform:scale(1.03) translate3d(0,0,0)}
+  to{transform:scale(1.09) translate3d(-1.5%,-.5%,0)}
+}
+.owner-btn{
+  border:1px solid #59743f;background:#172112;color:var(--acid);
+  border-radius:12px;padding:9px 12px;font-size:11px;font-weight:1000;
+  letter-spacing:.08em;white-space:nowrap
+}
+.owner-btn:before{content:"◆ ";font-size:8px}
+#shareStudio{scroll-margin-top:90px}
+
+/* never fall back to drawn coaster art */
+.coaster-image.generated,.park-track-art{display:none!important}
+
+@media(max-width:700px){
+  .topbar{gap:8px;padding-left:14px;padding-right:14px}
+  .brand{font-size:16px}
+  .owner-btn{padding:8px 9px;font-size:9px}
+  .icon-btn{padding:9px 10px;font-size:11px}
+  .shell{padding-bottom:170px!important}
+  .credit-showcase{min-height:275px!important;border-radius:22px!important}
+  .credit-copy{padding:22px 22px 30px!important}
+  .credit-number{font-size:112px!important;margin-bottom:14px!important}
+  .hero-inline-stats{gap:6px}
+  .hero-inline-stats span{font-size:9px;padding:7px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-nav{bottom:calc(10px + env(safe-area-inset-bottom))!important}
+}
