@@ -49,22 +49,28 @@
     <button class="nav-btn" data-view="tripMode">Trip</button>
     <button class="nav-btn" data-view="settings">Settings</button>
   </nav>
+  <button id="ownerHub" class="owner-btn" type="button" hidden>OWNER</button>
   <button id="logout" class="icon-btn">Log out</button>
 </header>
 
 <main class="shell">
 <section id="dashboard" class="view active-view">
   <div class="credit-showcase" id="creditShowcase">
+    <div class="credit-photo" id="creditHeroPhoto" aria-hidden="true"></div>
+    <div class="credit-shade"></div>
     <div class="credit-copy">
-      <div class="kicker">TOTAL COASTER CREDIT COUNT</div>
+      <div class="kicker">TOTAL COASTER CREDITS</div>
       <div class="credit-number" id="heroCredits">0</div>
-      <div class="credit-label">UNIQUE ROLLER COASTERS RIDDEN</div>
-      <p>Every first ride earns a credit. Every reride adds to your lifetime ride count.</p>
+      <div class="credit-label">UNIQUE COASTERS RIDDEN</div>
+      <div class="hero-inline-stats">
+        <span><strong id="heroRideCount">0</strong> rides</span>
+        <span><strong id="heroParkCount">0</strong> parks</span>
+        <span id="heroTopLabel">Start riding</span>
+      </div>
     </div>
-    <div class="coaster-motion" aria-hidden="true">
-      <svg viewBox="0 0 700 260" role="presentation"><path class="track-shadow" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/><path class="track-line" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/></svg>
-      <div class="coaster-train"><i></i><i></i><i></i></div>
-      <div class="motion-caption">CREDIT CHASER</div>
+    <div class="velocity-line" aria-hidden="true">
+      <div class="velocity-rail"></div>
+      <div class="velocity-train"><i></i><i></i><i></i><i></i></div>
     </div>
   </div>
 
@@ -147,7 +153,7 @@
     <section class="panel"><h3>Data</h3><p class="muted">Your private ride vault stays encrypted in this browser. Export backups whenever you want.</p><div class="settings-actions"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></section>
   </div>
 
-  <section class="panel share-studio">
+  <section id="shareStudio" class="panel share-studio">
     <div class="section-head"><div><div class="kicker">SHARE STUDIO</div><h3>Generate an ad to post</h3></div><span class="hint">1080 × 1350 social graphic</span></div>
     <div class="share-grid">
       <div class="form-grid">
