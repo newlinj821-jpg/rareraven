@@ -1,9 +1,13 @@
 {
   "name": "coasterverse-private",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.1.7",
+    "resend": "6.37.0"
   }
 }
