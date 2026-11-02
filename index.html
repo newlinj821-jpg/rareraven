@@ -9,7 +9,7 @@
   <section class="auth-card">
     <div class="logo">COASTER<span>//</span>VERSE</div><div class="auth-kicker">PRIVATE TRACKER</div>
     <h1>Your coaster history.<br><em>One tap at a time.</em></h1>
-    <form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button class="primary big" type="submit">ENTER COASTERVERSE</button><div id="loginError" class="error"></div></form>
+    <form id="loginForm" action="#" onsubmit="return false;"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button class="primary big" type="submit">ENTER COASTERVERSE</button><div id="loginError" class="error"></div></form>
   </section>
 </div>
 <div id="app" hidden>
@@ -32,5 +32,5 @@
 <div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close">×</button><div id="modalBody"></div></div></div>
 <footer><span>COASTER//VERSE PRIVATE FINAL</span><div><button id="exportBtn" class="text-btn">Export backup</button><button id="importBtn" class="text-btn">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></footer>
 </div>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./login.js?v=7"></script>
 </body></html>
