@@ -1,7 +1,0 @@
-node_modules/
-.localstore/
-.teststore/
-.demostore/
-scraper/probe-output/
-scraper/local-config.json
-.netlify/
