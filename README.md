@@ -1,43 +1,66 @@
-# CoasterVerse — Private Final
+# CoasterVerse
 
-A private, single-user roller coaster credit + ride-count tracker built to upgrade cleanly into a public multi-user app later.
+CoasterVerse is a private-first, public-ready roller-coaster credit and ride tracker for Netlify.
 
-## What it does
-- Tap a coaster row **or +1** to log a ride instantly; every tap gets a short Undo action.
-- The first ride automatically creates the coaster credit.
-- Credits and total rides are tracked separately.
-- Curated U.S.-only enthusiast database: **63 parks / 368 roller coasters**, including Disney, Universal, Six Flags, the legacy Cedar Fair parks, SeaWorld/Busch Gardens, and standout independents.
-- Most-ridden coaster, park, and classification leaderboards.
-- Custom park/coaster entry for anything missing from the seed database.
-- Encrypted local ride vault. Data stays in the browser unless exported.
-- JSON backup/restore.
-- Installable PWA.
-- Private login via a Netlify Function.
+## Current feature set
 
-## Private login
-The private username and password are **not stored in the repository**. Configure them in Netlify with:
+- Animated total coaster-credit showcase with moving coaster/track graphic
+- 63 curated U.S. parks / 368 coaster catalog
+- Park completion percentages and ridden/unridden filtering
+- Fast +1 ride logging with first-ride credit detection
+- Coaster ratings, favorites, personal ranking and notes
+- Manufacturer and coaster-type statistics
+- Achievements / badges
+- Year in Coasters summary
+- Full ride timeline
+- Trip Mode / park-day ride counting
+- Mobile bottom navigation and dedicated quick-log button
+- Public leaderboard
+- Share Studio that renders a 1080×1350 PNG ad and post caption
+- Encrypted private local vault and JSON backup/import
+- Optional public email accounts via Resend
+- Optional cross-device public account vault sync via Netlify Blobs
+- Supabase is **not required**
+
+## Private owner mode
+
+Set these Netlify environment variables:
+
 - `CV_PRIVATE_USER`
 - `CV_PRIVATE_PASS`
 
-Use the private credentials you chose for this deployment.
+The private owner account can use the tracker while the public site is off.
 
-For a later public build, replace `auth.js` + the login function with email authentication and replace `storage.js` with a cloud storage adapter. The UI and ride model do not need to be rewritten.
+## Turn public mode on without Supabase
 
-## Netlify from this monorepo
-Create a Netlify site from the GitHub repository and set:
-- **Base directory:** `coasterverse`
-- **Build command:** leave blank
-- **Publish directory:** `.`
-- **Functions directory:** `netlify/functions`
+CoasterVerse's public backend uses Netlify Functions + Netlify Blobs. Log in with the private owner account, open **Settings**, and switch **Public site + leaderboard** on.
 
-Required environment variables:
-- `CV_PRIVATE_USER`
-- `CV_PRIVATE_PASS`
+Public local/device tracking can work with no email provider. For email accounts, magic-link login, and cross-device sync, also configure:
 
-## Data model
-A credit is derived from ride history: one or more ride records for a coaster = one unique credit. This avoids duplicate credit records and makes repeated rides accurate by construction.
+- `CV_AUTH_SECRET` — long random secret used to sign email/session tokens
+- `RESEND_API_KEY` — Resend API key
+- `CV_EMAIL_FROM` — verified Resend sender, e.g. `CoasterVerse <login@example.com>`
+- `CV_SITE_URL` — production site origin, e.g. `https://coasterverse.example.com`
+- `CV_PUBLIC_OWNER_NAME` — optional owner leaderboard display name
 
-## Validate
-```bash
-npm test
-```
+Then enable **Email signups through Resend** from CoasterVerse Settings.
+
+No Supabase project is required. Supabase can be added later if desired, but it is not part of the required runtime path.
+
+## Public data model
+
+Netlify Blobs stores:
+
+- site public-mode settings
+- public leaderboard profile aggregates
+- email-account ride vaults for cross-device sync
+
+Private-owner ride data continues to use the encrypted browser-local vault unless deliberately published as aggregate leaderboard stats.
+
+## Image use
+
+A small set of coaster photographs is loaded from Wikimedia Commons for visual cards/park heroes. See `/image-credits.html` for attribution and licensing links. Coasters without a mapped image use generated track artwork rather than broken placeholders.
+
+## Validation
+
+`npm test` verifies the coaster catalog and the major v5 UI/public-mode wiring. GitHub Actions runs the same install/test path used to catch previous Netlify deployment failures.

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/smoke-test.mjs"
+    "test": "node scripts/smoke-test.mjs && node scripts/ui-smoke-test.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "11.1.7",

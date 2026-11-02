@@ -1,36 +1,175 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#080b0f">
-<title>CoasterVerse — Eros’ Coaster Tracker</title><link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080b0f">
+<title>CoasterVerse — Roller Coaster Credit Tracker</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./styles.css?v=20">
 </head>
 <body>
 <div id="loginScreen" class="auth-shell">
   <section class="auth-card">
-    <div class="logo">COASTER<span>//</span>VERSE</div><div class="auth-kicker">PRIVATE TRACKER</div>
-    <h1>Your coaster history.<br><em>One tap at a time.</em></h1>
-    <form id="loginForm" action="#" onsubmit="return false;"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button class="primary big" type="submit">ENTER COASTERVERSE</button><div id="loginError" class="error"></div></form>
+    <div class="logo">COASTER<span>//</span>VERSE</div>
+    <div class="auth-kicker">ROLLER COASTER TRACKER</div>
+    <h1>Your coaster history.<br><em>One ride at a time.</em></h1>
+    <form id="loginForm" action="#" onsubmit="return false;">
+      <div class="auth-section-title">Private owner access</div>
+      <label>Username<input id="username" autocomplete="username" required></label>
+      <label>Password<input id="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary big" type="submit">ENTER COASTERVERSE</button>
+      <div id="loginError" class="error"></div>
+    </form>
+    <section id="publicAccess" class="public-access" hidden>
+      <div class="auth-divider"><span>PUBLIC MODE</span></div>
+      <p id="publicModeText">CoasterVerse is open for public riders.</p>
+      <label>Display name<input id="publicDisplayName" maxlength="40" placeholder="Coaster rider"></label>
+      <button id="continueGuest" class="secondary wide" type="button">CONTINUE ON THIS DEVICE</button>
+      <form id="publicEmailForm" action="#" onsubmit="return false;">
+        <label>Email<input id="publicEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <button id="emailLoginButton" class="secondary wide" type="submit">EMAIL ME A SIGN-IN LINK</button>
+      </form>
+      <button id="continueSavedPublic" class="text-link" type="button" hidden></button>
+      <div id="publicEmailStatus" class="auth-note"></div>
+    </section>
   </section>
 </div>
+
 <div id="app" hidden>
-<header class="topbar"><button class="brand nav-btn" data-view="dashboard">COASTER<span>//</span>VERSE</button><nav><button class="nav-btn active" data-view="dashboard">Home</button><button class="nav-btn" data-view="parks">Parks</button><button class="nav-btn" data-view="credits">Credits</button><button class="nav-btn" data-view="leaderboard">Leaderboard</button></nav><button id="logout" class="icon-btn">Log out</button></header>
+<header class="topbar">
+  <button class="brand nav-btn" data-view="dashboard">COASTER<span>//</span>VERSE</button>
+  <nav class="desktop-nav">
+    <button class="nav-btn active" data-view="dashboard">Home</button>
+    <button class="nav-btn" data-view="parks">Parks</button>
+    <button class="nav-btn" data-view="credits">Credits</button>
+    <button class="nav-btn" data-view="timelineView">Timeline</button>
+    <button class="nav-btn" data-view="statsView">Stats</button>
+    <button class="nav-btn" data-view="leaderboard">Leaderboard</button>
+    <button class="nav-btn" data-view="tripMode">Trip</button>
+    <button class="nav-btn" data-view="settings">Settings</button>
+  </nav>
+  <button id="logout" class="icon-btn">Log out</button>
+</header>
+
 <main class="shell">
 <section id="dashboard" class="view active-view">
-  <div class="hero"><div><div class="kicker">EROS’ COASTER LOG</div><h2>Tap. Ride. <em>Count it.</em></h2><p>One tap logs one ride. Your first ride on a coaster automatically earns the credit.</p></div><div class="hero-badge"><span id="heroCredits">0</span><small>UNIQUE CREDITS</small></div></div>
-  <div class="stats"><article><strong id="statCredits">0</strong><span>Unique credits</span></article><article><strong id="statRides">0</strong><span>Total rides</span></article><article><strong id="statParks">0</strong><span>Parks ridden</span></article><article><strong id="statTop">—</strong><span>Most ridden</span></article></div>
-  <section class="quick-panel"><div class="section-head"><div><div class="kicker">FASTEST WAY IN</div><h3>Quick log</h3></div><span class="hint">Tap the coaster. Done.</span></div><div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search coaster or park…" autocomplete="off"><button id="clearSearch" class="clear">×</button></div><div id="quickResults" class="coaster-list"></div></section>
-  <section><div class="section-head"><div><div class="kicker">RECENT</div><h3>Latest rides</h3></div></div><div id="recentRides" class="timeline"></div></section>
+  <div class="credit-showcase" id="creditShowcase">
+    <div class="credit-copy">
+      <div class="kicker">TOTAL COASTER CREDIT COUNT</div>
+      <div class="credit-number" id="heroCredits">0</div>
+      <div class="credit-label">UNIQUE ROLLER COASTERS RIDDEN</div>
+      <p>Every first ride earns a credit. Every reride adds to your lifetime ride count.</p>
+    </div>
+    <div class="coaster-motion" aria-hidden="true">
+      <svg viewBox="0 0 700 260" role="presentation"><path class="track-shadow" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/><path class="track-line" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/></svg>
+      <div class="coaster-train"><i></i><i></i><i></i></div>
+      <div class="motion-caption">CREDIT CHASER</div>
+    </div>
+  </div>
+
+  <div id="activeTripBanner" class="trip-banner" hidden></div>
+  <div class="stats">
+    <article><strong id="statCredits">0</strong><span>Unique credits</span></article>
+    <article><strong id="statRides">0</strong><span>Total rides</span></article>
+    <article><strong id="statParks">0</strong><span>Parks ridden</span></article>
+    <article><strong id="statTop">—</strong><span>Most ridden</span></article>
+  </div>
+
+  <section class="quick-panel">
+    <div class="section-head"><div><div class="kicker">FASTEST WAY IN</div><h3>Quick log</h3></div><span class="hint">Search. Tap +1. Done.</span></div>
+    <div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search coaster, park, type…" autocomplete="off"><button id="clearSearch" class="clear" type="button">×</button></div>
+    <div id="quickResults" class="coaster-list"></div>
+  </section>
+
+  <div class="dashboard-grid">
+    <section class="panel">
+      <div class="section-head"><div><div class="kicker">PARK COMPLETION</div><h3>Closest to complete</h3></div><button class="text-btn nav-jump" data-view="parks">All parks</button></div>
+      <div id="dashboardParks" class="mini-parks"></div>
+    </section>
+    <section class="panel">
+      <div class="section-head"><div><div class="kicker" id="yearKicker">YEAR IN COASTERS</div><h3 id="yearTitle">This year</h3></div><button class="text-btn nav-jump" data-view="statsView">Full stats</button></div>
+      <div id="yearSummary" class="year-grid"></div>
+    </section>
+  </div>
+
+  <section class="panel"><div class="section-head"><div><div class="kicker">ACHIEVEMENTS</div><h3>Badge cabinet</h3></div><button class="text-btn nav-jump" data-view="statsView">See all</button></div><div id="badgePreview" class="badge-row"></div></section>
+  <section class="panel"><div class="section-head"><div><div class="kicker">RECENT</div><h3>Latest rides</h3></div><button class="text-btn nav-jump" data-view="timelineView">Timeline</button></div><div id="recentRides" class="timeline"></div></section>
 </section>
-<section id="parks" class="view"><div class="page-title"><div><div class="kicker">U.S. ROLLER COASTERS ONLY</div><h2>Park database</h2><p>63 curated U.S. destination and enthusiast parks. Tap any coaster to log it.</p></div><button id="addCustomBtn" class="secondary">+ Add missing coaster</button></div><input id="parkSearch" class="search" placeholder="Find a park…"><div id="parkGrid" class="park-grid"></div></section>
-<section id="parkDetail" class="view"><button id="backParks" class="back">← All parks</button><div id="parkHeader"></div><div id="parkCoasters" class="coaster-list"></div></section>
-<section id="credits" class="view"><div class="page-title"><div><div class="kicker">YOUR COLLECTION</div><h2>Credits</h2><p>Every coaster you have ridden at least once.</p></div></div><input id="creditSearch" class="search" placeholder="Search your credits…"><div id="creditList" class="coaster-list"></div></section>
-<section id="leaderboard" class="view"><div class="page-title"><div><div class="kicker">RIDE COUNTS</div><h2>Leaderboard</h2><p>Your most-ridden coasters, parks and classifications.</p></div></div><div class="leader-grid"><div class="board"><h3>Most ridden coasters</h3><div id="rideLeaderboard"></div></div><div class="board"><h3>Most ridden parks</h3><div id="parkLeaderboard"></div></div><div class="board"><h3>Top classifications</h3><div id="classLeaderboard"></div></div></div></section>
-<section id="settings" class="view"></section>
+
+<section id="parks" class="view">
+  <div class="page-title"><div><div class="kicker">63 CURATED U.S. PARKS</div><h2>Parks</h2><p>Tap a park to see completion, ridden and unridden credits, ratings and trip tools.</p></div><button id="addCustomBtn" class="secondary">+ Add missing coaster</button></div>
+  <div class="search-wrap"><input id="parkSearch" class="search" placeholder="Search park, city or state…"></div>
+  <div id="parkGrid" class="park-grid"></div>
+</section>
+
+<section id="parkDetail" class="view">
+  <button id="backParks" class="back sticky-back">← Parks</button>
+  <div id="parkHeader"></div>
+  <div class="filter-tabs" id="parkFilters"><button class="filter-tab active" data-park-filter="all">All</button><button class="filter-tab" data-park-filter="ridden">Ridden</button><button class="filter-tab" data-park-filter="unridden">Unridden</button></div>
+  <div id="parkCoasters" class="coaster-list"></div>
+</section>
+
+<section id="credits" class="view">
+  <div class="page-title"><div><div class="kicker">YOUR COLLECTION</div><h2>Credits & rankings</h2><p>Rate, favorite and personally rank every coaster you have ridden.</p></div></div>
+  <div class="toolbar"><input id="creditSearch" class="search" placeholder="Search your credits…"><select id="creditSort" class="select"><option value="rank">Personal rank</option><option value="rating">Rating</option><option value="rides">Most ridden</option><option value="name">Name</option></select></div>
+  <div id="creditList" class="coaster-list"></div>
+</section>
+
+<section id="timelineView" class="view"><div class="page-title"><div><div class="kicker">EVERY RIDE</div><h2>Timeline</h2><p>Your coaster history grouped by ride day.</p></div></div><div id="timelineFull" class="timeline-full"></div></section>
+
+<section id="statsView" class="view">
+  <div class="page-title"><div><div class="kicker">YOUR COASTER DNA</div><h2>Stats</h2><p>Year-in-coasters, manufacturers, types, records and badges.</p></div></div>
+  <div id="yearStatsFull" class="feature-grid"></div>
+  <div class="leader-grid stats-leaders"><div class="board"><h3>Manufacturers ridden</h3><div id="manufacturerStats"></div></div><div class="board"><h3>Coaster types</h3><div id="typeStats"></div></div><div class="board"><h3>Personal records</h3><div id="recordStats"></div></div></div>
+  <section class="panel"><div class="section-head"><div><div class="kicker">BADGES</div><h3>Achievements</h3></div></div><div id="badgeGrid" class="badge-grid"></div></section>
+  <button class="secondary nav-jump" data-view="leaderboard">Open public leaderboard</button>
+</section>
+
+<section id="leaderboard" class="view">
+  <div class="page-title"><div><div class="kicker">PERSONAL + PUBLIC</div><h2>Leaderboard</h2><p>Your own ride rankings plus the optional CoasterVerse public credit board.</p></div><button id="refreshPublicLeaderboard" class="secondary">Refresh public board</button></div>
+  <div class="leader-grid"><div class="board"><h3>My most ridden coasters</h3><div id="rideLeaderboard"></div></div><div class="board"><h3>My most ridden parks</h3><div id="parkLeaderboard"></div></div><div class="board"><h3>My top ratings</h3><div id="ratingLeaderboard"></div></div></div>
+  <section class="panel public-board"><div class="section-head"><div><div class="kicker">COASTERVERSE WORLD BOARD</div><h3>Total coaster credits</h3></div><button id="publishStatsBtn" class="primary small">Publish my stats</button></div><div id="publicLeaderboardStatus" class="auth-note"></div><div id="publicLeaderboard" class="public-ranks"></div></section>
+</section>
+
+<section id="tripMode" class="view">
+  <div class="page-title"><div><div class="kicker">PARK DAY MODE</div><h2>Trip mode</h2><p>Start a park day and every ride you log is automatically attached to that trip.</p></div></div>
+  <div id="activeTripPanel"></div>
+  <section class="panel" id="newTripPanel"><h3>Start a trip</h3><div class="form-grid trip-form"><label>Trip name<input id="tripName" placeholder="Epic Universe day"></label><label>Park<select id="tripPark"></select></label><label>Date<input id="tripDate" type="date"></label></div><button id="startTripBtn" class="primary">START TRIP MODE</button></section>
+  <section class="panel"><h3>Trip history</h3><div id="tripHistory"></div></section>
+</section>
+
+<section id="settings" class="view">
+  <div class="page-title"><div><div class="kicker">CONTROL CENTER</div><h2>Settings</h2><p>Profile, public-mode controls, backups and your share studio.</p></div></div>
+  <div class="settings-grid">
+    <section class="panel"><h3>Profile</h3><label class="field">Display name<input id="profileName" maxlength="40"></label><label class="check"><input id="profilePublish" type="checkbox"> Publish my stats when public mode is on</label><button id="saveProfileBtn" class="secondary">Save profile</button></section>
+    <section class="panel" id="publicSettingsPanel"><h3>Public mode</h3><div id="publicSettingsStatus" class="auth-note">Checking…</div><label class="switch-row"><span>Public site + leaderboard</span><input id="publicModeToggle" type="checkbox"></label><label class="switch-row"><span>Email signups through Resend</span><input id="publicSignupToggle" type="checkbox"></label><button id="savePublicModeBtn" class="primary">SAVE PUBLIC SETTINGS</button></section>
+    <section class="panel"><h3>Data</h3><p class="muted">Your private ride vault stays encrypted in this browser. Export backups whenever you want.</p><div class="settings-actions"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></section>
+  </div>
+
+  <section class="panel share-studio">
+    <div class="section-head"><div><div class="kicker">SHARE STUDIO</div><h3>Generate an ad to post</h3></div><span class="hint">1080 × 1350 social graphic</span></div>
+    <div class="share-grid">
+      <div class="form-grid">
+        <label>Headline<input id="adHeadline" maxlength="54" value="Track every coaster. Chase every credit."></label>
+        <label>Featured coaster<select id="adFeatured"></select></label>
+        <label>Theme<select id="adTheme"><option value="acid">Acid track</option><option value="night">Night ride</option><option value="steel">Steel blue</option></select></label>
+        <label>Call to action<input id="adCta" maxlength="60" value="Join the CoasterVerse leaderboard"></label>
+        <div class="settings-actions"><button id="generateAdBtn" class="primary">GENERATE AD</button><button id="downloadAdBtn" class="secondary" disabled>Download PNG</button><button id="copyAdCaptionBtn" class="secondary">Copy caption</button></div>
+        <textarea id="adCaption" rows="5">CoasterVerse is built for coaster people: credits, park completion, ratings, rankings, trip mode, achievements, ride history, and a public leaderboard. Track every ride. Chase every credit.</textarea>
+      </div>
+      <div class="ad-preview-wrap"><canvas id="adCanvas" width="1080" height="1350"></canvas></div>
+    </div>
+  </section>
+</section>
 </main>
-<button id="floatingAdd" class="fab" aria-label="Quick log a ride">+1</button>
+
+<nav class="mobile-nav" aria-label="Mobile navigation"><button class="mobile-tab active" data-view="dashboard"><span>⌂</span>Home</button><button class="mobile-tab" data-view="parks"><span>◫</span>Parks</button><button id="mobileLog" class="mobile-log" type="button"><span>+1</span>Log</button><button class="mobile-tab" data-view="timelineView"><span>≡</span>Timeline</button><button class="mobile-tab" data-view="statsView"><span>⌁</span>Stats</button></nav>
+
 <div id="toast" class="toast" aria-live="polite"></div>
-<div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close">×</button><div id="modalBody"></div></div></div>
-<footer><span>COASTER//VERSE PRIVATE FINAL</span><div><button id="exportBtn" class="text-btn">Export backup</button><button id="importBtn" class="text-btn">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></footer>
+<div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close" type="button">×</button><div id="modalBody"></div></div></div>
+<footer><span>COASTER//VERSE · PRIVATE-FIRST / PUBLIC-READY</span><div><a class="text-btn" href="/image-credits.html">Image credits</a></div></footer>
 </div>
-<script type="module" src="./login.js?v=11"></script>
-</body></html>
+<script type="module" src="./login.js?v=20"></script>
+</body>
+</html>
