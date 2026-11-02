@@ -144,10 +144,71 @@ async function commonsImage(name,park,width){
   return best;
 }
 
+async function commonsCategoryImage(name,park,width){
+  const searchUrl=new URL('https://commons.wikimedia.org/w/api.php');
+  searchUrl.search=new URLSearchParams({
+    action:'query',format:'json',origin:'*',list:'search',
+    srsearch:`"${name}" "${park}"`,srnamespace:'14',srlimit:'12',srprop:'snippet|titlesnippet'
+  }).toString();
+  const search=await fetchJson(searchUrl);
+  const categories=(search?.query?.search||[]).map(row=>{
+    const title=String(row.title||'').replace(/^Category:/i,'');
+    const text=stripHtml(row.snippet||'');
+    const scored=scoreCandidate({name,park,title,text,description:text,source:'commons'});
+    return {...row,titleClean:title,...scored};
+  }).filter(x=>x.acceptable).sort((a,b)=>b.score-a.score);
+
+  for(const category of categories.slice(0,4)){
+    const membersUrl=new URL('https://commons.wikimedia.org/w/api.php');
+    membersUrl.search=new URLSearchParams({
+      action:'query',format:'json',origin:'*',list:'categorymembers',
+      cmtitle:category.title,cmnamespace:'6',cmlimit:'50',cmtype:'file'
+    }).toString();
+    const members=await fetchJson(membersUrl);
+    const files=(members?.query?.categorymembers||[]).filter(x=>/\.(jpe?g|png|webp)$/i.test(x.title||''));
+    if(!files.length) continue;
+
+    const preferred=[...files].sort((a,b)=>{
+      const ta=norm(a.title),tb=norm(b.title);
+      const score=t=>(containsPhrase(name,t)?50:0)+Math.round(coverage(name,t)*30)+(/train|track|coaster|ride|roller/i.test(t)?15:0)-(/sign|entrance|queue|logo|map/i.test(t)?8:0);
+      return score(tb)-score(ta);
+    }).slice(0,12);
+
+    const detailUrl=new URL('https://commons.wikimedia.org/w/api.php');
+    detailUrl.search=new URLSearchParams({
+      action:'query',format:'json',origin:'*',
+      pageids:preferred.map(x=>x.pageid).join('|'),
+      prop:'imageinfo',iiprop:'url|extmetadata',
+      iiurlwidth:String(Math.min(1600,Math.max(500,width)))
+    }).toString();
+    const detail=await fetchJson(detailUrl);
+    const pages=Object.values(detail?.query?.pages||{});
+    for(const page of pages){
+      const info=page.imageinfo?.[0];
+      if(!info?.thumburl&&!info?.url) continue;
+      const meta=info.extmetadata||{};
+      return {
+        score:category.score,
+        acceptable:true,
+        nameCov:category.nameCov,
+        parkCov:category.parkCov,
+        url:info.thumburl||info.url,
+        source:'Wikimedia Commons',
+        sourceUrl:`https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g,'_'))}`,
+        title:page.title,
+        credit:stripHtml(meta.Artist?.value||meta.Credit?.value||'Wikimedia Commons'),
+        category:category.title
+      };
+    }
+  }
+  return null;
+}
+
 async function resolveCoaster(name,park,width){
   const candidates=[];
   try{const wiki=await wikipediaImage(name,park,width);if(wiki)candidates.push(wiki)}catch(error){console.warn('Wikipedia image search failed',error)}
   try{const commons=await commonsImage(name,park,width);if(commons)candidates.push(commons)}catch(error){console.warn('Commons image search failed',error)}
+  try{const category=await commonsCategoryImage(name,park,width);if(category)candidates.push(category)}catch(error){console.warn('Commons category image search failed',error)}
   candidates.sort((a,b)=>b.score-a.score);
   const best=candidates[0];
   if(!best) return null;
