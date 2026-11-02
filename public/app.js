@@ -110,8 +110,8 @@ function toggleFavorite(id){setRating(id,{favorite:!ratingFor(id).favorite});per
 
 function coasterArt(c,size='card'){
   const visual=coasterVisual(c.id,size==='hero'?1400:500);
-  if(visual) return `<div class="coaster-image ${size}"><img src="${esc(visual.url)}" alt="${esc(c.name)}" loading="lazy"><span class="photo-credit">${esc(visual.credit)}</span></div>`;
-  return `<div class="coaster-image generated ${size}" aria-hidden="true"><div class="mini-track"><i></i><i></i><i></i></div><span>${esc(shortType(c)).toUpperCase()}</span></div>`;
+  const alt=visual.exact?c.name:'Roller coaster photo';
+  return `<div class="coaster-image ${size}"><img src="${esc(visual.url)}" alt="${esc(alt)}" loading="lazy"><span class="photo-credit">${esc(visual.exact?visual.credit:'Coaster photo · '+visual.credit)}</span></div>`;
 }
 
 function coasterCard(c){
@@ -218,7 +218,15 @@ function renderQuick(){
 }
 
 function renderDashboard(){
-  const s=basicStats();animateNumber($('#heroCredits'),s.credits);$('#statCredits').textContent=s.credits;$('#statRides').textContent=s.rides;$('#statParks').textContent=s.parks;$('#statTop').textContent=s.top==='—'?'—':s.top.length>20?s.top.slice(0,19)+'…':s.top;
+  const s=basicStats();
+  animateNumber($('#heroCredits'),s.credits);
+  $('#heroRideCount').textContent=s.rides;
+  $('#heroParkCount').textContent=s.parks;
+  $('#heroTopLabel').textContent=s.top==='—'?'Start riding':s.top;
+  const heroId=[...creditedIds()].sort((a,b)=>countFor(b)-countFor(a))[0]||'velocicoaster';
+  const heroVisual=coasterVisual(heroId,1600);
+  $('#creditHeroPhoto').style.backgroundImage=`url("${heroVisual.url}")`;
+  $('#statCredits').textContent=s.credits;$('#statRides').textContent=s.rides;$('#statParks').textContent=s.parks;$('#statTop').textContent=s.top==='—'?'—':s.top.length>20?s.top.slice(0,19)+'…':s.top;
   renderQuick();renderActiveTripBanner();
   const parks=parkCompletion().filter(p=>p.done>0&&p.total>0).sort((a,b)=>b.pct-a.pct||b.done-a.done).slice(0,5);
   $('#dashboardParks').innerHTML=parks.length?parks.map(p=>`<button class="mini-park" data-park="${esc(p.id)}"><div><strong>${esc(p.name)}</strong><span>${p.done}/${p.total} credits</span></div><div class="mini-progress"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></button>`).join(''):'<div class="empty">Ride your first park credit to start completion tracking.</div>';
@@ -294,6 +302,10 @@ export async function boot(session){
   renderAll();generateAd();
 }
 
+$('#ownerHub').onclick=()=>{
+  switchView('settings');
+  setTimeout(()=>document.querySelector('#shareStudio')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
+};
 $('#logout').onclick=()=>{if(activeSession?.mode==='public')clearPublicSession();location.reload()};
 $$('.nav-btn,.mobile-tab,.nav-jump').forEach(b=>b.onclick=()=>b.dataset.view&&switchView(b.dataset.view));
 $('#quickSearch').oninput=renderQuick;$('#clearSearch').onclick=()=>{$('#quickSearch').value='';renderQuick();$('#quickSearch').focus()};$('#parkSearch').oninput=renderParks;$('#creditSearch').oninput=renderCredits;$('#creditSort').onchange=renderCredits;$('#backParks').onclick=()=>switchView('parks');$('#addCustomBtn').onclick=openCustom;$('#mobileLog').onclick=openQuickLog;$('#modalClose').onclick=()=>$('#modal').hidden=true;$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').hidden=true};
