@@ -287,7 +287,8 @@ function openQuickLog(){$('#modalBody').innerHTML='<div class="kicker">QUICK LOG
 function openCustom(){const parks=allParks().sort((a,b)=>a.name.localeCompare(b.name));$('#modalBody').innerHTML=`<div class="kicker">DATABASE MISSING SOMETHING?</div><h3>Add a coaster</h3><div class="form-grid"><label>Coaster name<input id="newName" placeholder="Coaster name"></label><label>Park<select id="newPark"><option value="__new">+ Add new park</option>${parks.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label><div id="newParkFields"><label>New park name<input id="newParkName" placeholder="Theme park"></label><label>Location<input id="newLocation" placeholder="City, State"></label></div><label>Material<select id="newMaterial"><option>Steel</option><option>Wood</option><option>Hybrid</option></select></label><label>Type / classification<input id="newClass" placeholder="Giga, Hyper, Launch, Inverted…"></label></div><div class="modal-actions"><button id="saveCustom" class="primary">SAVE + LOG FIRST RIDE</button></div>`;$('#modal').hidden=false;const sel=$('#newPark'),sync=()=>$('#newParkFields').style.display=sel.value==='__new'?'grid':'none';sel.onchange=sync;sync();$('#saveCustom').onclick=async()=>{const name=$('#newName').value.trim(),classification=$('#newClass').value.trim()||'Unclassified';if(!name)return showToast('Enter a coaster name');let parkId=sel.value;if(parkId==='__new'){const pn=$('#newParkName').value.trim();if(!pn)return showToast('Enter the park name');const loc=$('#newLocation').value.split(',').map(x=>x.trim());parkId='custom-park-'+crypto.randomUUID();vault.customParks.push({id:parkId,name:pn,city:loc[0]||'',state:loc[1]||'',country:loc[2]||'USA'})}const id='custom-coaster-'+crypto.randomUUID();vault.customCoasters.push({id,name,parkId,material:$('#newMaterial').value,classification});$('#modal').hidden=true;await logRide(id)}}
 
 export async function boot(session){
-  activeSession=session;
+  const isPrivate=session?.mode!=='public'&&session?.mode!=='guest';
+  activeSession=isPrivate?{...session,mode:'private',role:'owner'}:session;
   activePassword=String(session?.password??'').trim();
   if(!activePassword) throw new Error('Authenticated session is missing its local vault key.');
   vault=await loadVault(activePassword);
@@ -298,6 +299,7 @@ export async function boot(session){
   await saveVault(activePassword,vault);
   if(session?.mode==='public'&&session.publicToken) queueCloudSync();
   $('#loginScreen').hidden=true;$('#app').hidden=false;
+  $('#ownerHub').hidden=activeSession?.role!=='owner';
   publicConfig=await getPublicConfig().catch(()=>publicConfig);
   renderAll();generateAd();
 }
