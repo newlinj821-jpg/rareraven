@@ -1,9 +1,10 @@
 {
   "name": "coasterverse-private",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/build-data.mjs",
     "test": "node scripts/smoke-test.mjs"
   }
 }

@@ -1,3 +1,6 @@
+// Remove stale CoasterVerse offline caches from earlier broken builds.
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});}
+if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('coasterverse-')).map(k=>caches.delete(k)))).catch(()=>{});}
 import {login,loginHealth} from './auth.js';
 
 const $=s=>document.querySelector(s);
@@ -25,7 +28,7 @@ if(form){
     try{
       const session=await login(username,password);
       showError('Signed in. Loading CoasterVerse…');
-      const app=await import('./app.js?v=7');
+      const app=await import('./app.js?v=8');
       if(typeof app.boot!=='function') throw new Error('CoasterVerse application failed to initialize.');
       await app.boot(session);
       showError('');
