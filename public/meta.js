@@ -62,23 +62,46 @@ const PARK_FEATURE={
   'ioa':'velocicoaster','cp':'millennium-force','hp':'storm-runner','carowinds':'fury-325','bgt':'iron-gwazi'
 };
 
+const FALLBACK_VISUALS=[
+  {file:'VelociCoaster 1.jpg',credit:'Eric A. Soto · CC BY-SA 2.0'},
+  {file:'Millennium Force (Final Airtime).JPG',credit:'Coasterman1234 · Wikimedia Commons'},
+  {file:'Steel Vengeance Cedar Point (53161810238).jpg',credit:'Jeremy Thompson · CC BY 2.0'},
+  {file:'Hersheypark Storm Runner.jpg',credit:'Mike Romano · Public Domain'},
+  {file:'Fury 325 (Carowinds) 1.jpg',credit:'Martin Lewison · Wikimedia Commons'},
+  {file:'Iron Gwazi - Busch Gardens Tampa.jpg',credit:'Railfan99 · CC BY-SA 4.0'}
+];
+
+function hashIndex(value,length){
+  let hash=2166136261;
+  for(const ch of String(value||'')){hash^=ch.charCodeAt(0);hash=Math.imul(hash,16777619)}
+  return Math.abs(hash>>>0)%length;
+}
+
 export function manufacturerFor(coaster){
   return MANUFACTURER[coaster?.id]||'Unknown';
 }
 
 export function coasterVisual(id,width=900){
-  const item=VISUALS[id];
-  if(!item) return null;
+  const exact=VISUALS[id];
+  const item=exact||FALLBACK_VISUALS[hashIndex(id,FALLBACK_VISUALS.length)];
   return {
     url:`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(item.file)}?width=${width}`,
     credit:item.credit,
-    file:item.file
+    file:item.file,
+    exact:Boolean(exact)
   };
 }
 
 export function parkVisual(parkId,coasters=[],width=1200){
   const featured=PARK_FEATURE[parkId]||coasters.find(c=>VISUALS[c.id])?.id;
-  return featured?coasterVisual(featured,width):null;
+  if(featured) return coasterVisual(featured,width);
+  const item=FALLBACK_VISUALS[hashIndex(parkId,FALLBACK_VISUALS.length)];
+  return {
+    url:`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(item.file)}?width=${width}`,
+    credit:item.credit,
+    file:item.file,
+    exact:false
+  };
 }
 
 export function shortType(coaster){
