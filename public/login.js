@@ -22,8 +22,8 @@ const button=form?.querySelector('button[type="submit"]');
 
 window.__cvLoginReady=true;
 
-function showError(message){
-  if(error) error.textContent=message||'Login failed.';
+function showError(message=''){
+  if(error) error.textContent=String(message ?? '');
 }
 
 if(form){
@@ -41,7 +41,7 @@ if(form){
       const authResult=await login(username,password);
       showError('Signed in. Loading CoasterVerse…');
       await cacheResetPromise;
-      const app=await import('./app.js?v=10');
+      const app=await import('./app.js?v=11');
       if(typeof app.boot!=='function') throw new Error('CoasterVerse application failed to initialize.');
       await app.boot(authResult);
       showError('');
