@@ -272,13 +272,23 @@ function renderDashboard(){
 }
 
 function renderParks(){
-  const q=$('#parkSearch').value.trim().toLowerCase();let parks=parkCompletion().filter(p=>`${p.name} ${formatLocation(p)}`.toLowerCase().includes(q));parks.sort((a,b)=>(b.done>0)-(a.done>0)||b.pct-a.pct||a.name.localeCompare(b.name));
-  $('#parkGrid').innerHTML=parks.map(p=>{const coasters=allCoasters().filter(c=>c.parkId===p.id),visual=parkVisual(p.id,coasters,900);return `<button class="park-card" data-park="${esc(p.id)}"><div class="park-card-visual">${visual?`<img src="${esc(visual.url)}" alt="" loading="lazy">`:'<div class="park-track-art"><i></i><i></i></div>'}<div class="park-card-overlay"></div><div class="park-ring" style="--pct:${p.pct}"><span>${p.pct}%</span></div></div><div class="park-card-body"><div class="kicker">${p.done} OF ${p.total} RIDDEN</div><h3>${esc(p.name)}</h3><div class="location">${esc(formatLocation(p))}</div><div class="progress"><i style="width:${p.pct}%"></i></div><div class="tap-hint">TAP TO OPEN PARK →</div></div></button>`}).join('')||'<div class="empty">No park found.</div>';
+  const q=$('#parkSearch').value.trim().toLowerCase();
+  let parks=parkCompletion().filter(p=>`${p.name} ${formatLocation(p)}`.toLowerCase().includes(q));
+  parks.sort((a,b)=>(b.done>0)-(a.done>0)||b.pct-a.pct||a.name.localeCompare(b.name));
+  $('#parkGrid').innerHTML=parks.map(p=>`<button class="park-card" data-park="${esc(p.id)}"><div class="park-card-visual">${parkArt(p,'card')}<div class="park-card-overlay"></div><div class="park-ring" style="--pct:${p.pct}"><span>${p.pct}%</span></div></div><div class="park-card-body"><div class="kicker">${p.done} OF ${p.total} RIDDEN</div><h3>${esc(p.name)}</h3><div class="location">${esc(formatLocation(p))}</div><div class="progress"><i style="width:${p.pct}%"></i></div><div class="tap-hint">TAP TO OPEN PARK →</div></div></button>`).join('')||'<div class="empty">No park found.</div>';
   $('#parkGrid').querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>openPark(b.dataset.park));
+  hydrateExactImages($('#parkGrid'));
 }
-
 function openPark(id){activeParkId=id;parkFilter='all';$$('#parkFilters [data-park-filter]').forEach(b=>b.classList.toggle('active',b.dataset.parkFilter==='all'));renderParkDetail();switchView('parkDetail')}
-function renderParkDetail(){const p=parkMap().get(activeParkId);if(!p)return;const list=allCoasters().filter(c=>c.parkId===p.id).sort((a,b)=>a.name.localeCompare(b.name)),done=list.filter(c=>countFor(c.id)>0).length,pct=list.length?Math.round(done/list.length*100):0,visual=parkVisual(p.id,list,1400);$('#parkHeader').innerHTML=`<section class="park-hero"><div class="park-hero-photo">${visual?`<img src="${esc(visual.url)}" alt="" loading="eager">`:'<div class="park-track-art large"><i></i><i></i></div>'}<div class="park-hero-shade"></div></div><div class="park-hero-content"><div><div class="kicker">${list.length} ROLLER COASTERS</div><h2>${esc(p.name)}</h2><p>${esc(formatLocation(p))}</p><button class="primary small" id="tripThisPark">CHECK IN HERE</button></div><div class="completion-dial" style="--pct:${pct}"><strong>${pct}%</strong><span>${done}/${list.length} credits</span></div></div></section>`;$('#tripThisPark').onclick=()=>startTripForPark(p.id);renderParkCoasters()}
+function renderParkDetail(){
+  const p=parkMap().get(activeParkId);if(!p)return;
+  const list=allCoasters().filter(c=>c.parkId===p.id).sort((a,b)=>a.name.localeCompare(b.name));
+  const done=list.filter(c=>countFor(c.id)>0).length,pct=list.length?Math.round(done/list.length*100):0;
+  $('#parkHeader').innerHTML=`<section class="park-hero"><div class="park-hero-photo">${parkArt(p,'hero',true)}<div class="park-hero-shade"></div></div><div class="park-hero-content"><div><div class="kicker">${list.length} ROLLER COASTERS</div><h2>${esc(p.name)}</h2><p>${esc(formatLocation(p))}</p><button class="primary small" id="tripThisPark">CHECK IN HERE</button></div><div class="completion-dial" style="--pct:${pct}"><strong>${pct}%</strong><span>${done}/${list.length} credits</span></div></div></section>`;
+  $('#tripThisPark').onclick=()=>startTripForPark(p.id);
+  hydrateExactImages($('#parkHeader'));
+  renderParkCoasters();
+}
 function renderParkCoasters(){if(!activeParkId)return;let list=allCoasters().filter(c=>c.parkId===activeParkId).sort((a,b)=>a.name.localeCompare(b.name));if(parkFilter==='ridden')list=list.filter(c=>countFor(c.id)>0);if(parkFilter==='unridden')list=list.filter(c=>countFor(c.id)===0);$('#parkCoasters').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No coasters in this filter.</div>';bindCoasterCards($('#parkCoasters'))}
 
 function renderCredits(){const q=$('#creditSearch').value.trim().toLowerCase(),ids=creditedIds();let list=allCoasters().filter(c=>ids.has(c.id));if(q)list=list.filter(c=>{const p=parkMap().get(c.parkId);return `${c.name} ${p?.name} ${c.classification} ${manufacturerFor(c)}`.toLowerCase().includes(q)});const sort=$('#creditSort').value;list.sort((a,b)=>{const ra=ratingFor(a.id),rb=ratingFor(b.id);if(sort==='rank')return(ra.rank||99999)-(rb.rank||99999)||(rb.score||0)-(ra.score||0)||a.name.localeCompare(b.name);if(sort==='rating')return(rb.score||0)-(ra.score||0)||countFor(b.id)-countFor(a.id);if(sort==='rides')return countFor(b.id)-countFor(a.id)||a.name.localeCompare(b.name);return a.name.localeCompare(b.name)});$('#creditList').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No credits yet.</div>';bindCoasterCards($('#creditList'))}
