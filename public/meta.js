@@ -55,7 +55,12 @@ const VISUALS={
   'steel-vengeance':{file:'Steel Vengeance Cedar Point (53161810238).jpg',credit:'Jeremy Thompson · CC BY 2.0'},
   'storm-runner':{file:'Hersheypark Storm Runner.jpg',credit:'Mike Romano · Public Domain'},
   'fury-325':{file:'Fury 325 (Carowinds) 1.jpg',credit:'Martin Lewison · Wikimedia Commons'},
-  'iron-gwazi':{file:'Iron Gwazi - Busch Gardens Tampa.jpg',credit:'Railfan99 · CC BY-SA 4.0'}
+  'iron-gwazi':{file:'Iron Gwazi - Busch Gardens Tampa.jpg',credit:'Railfan99 · CC BY-SA 4.0'},
+  'everest':{file:'Expedition Everest.jpg',credit:'Benjamin D. Esham · CC BY-SA 4.0'},
+  'hippogriff':{file:'Flight of the Hippogriff at Islands of Adventure.jpg',credit:'Wikimedia Commons'},
+  'hagrids':{file:"Hagrid's Magical Creatures Motorbike Adventure-May 2023.JPG",credit:'Wikimedia Commons'},
+  'gringotts':{file:'Harry Potter and the Escape from Gringotts.JPG',credit:'Wikimedia Commons'},
+  'mummy-orlando':{file:'Revenge of the Mummy June 2025.jpg',credit:'Wikimedia Commons'}
 };
 
 const PARK_FEATURE={
