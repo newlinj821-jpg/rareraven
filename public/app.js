@@ -259,8 +259,7 @@ function renderDashboard(){
   $('#heroRideCount').textContent=s.rides;
   $('#heroParkCount').textContent=s.parks;
   $('#heroTopLabel').textContent=s.top==='—'?'Start riding':s.top;
-  const heroId=[...creditedIds()].sort((a,b)=>countFor(b)-countFor(a))[0]||'velocicoaster';
-  const heroVisual=coasterVisual(heroId,1600);
+  const heroVisual=creditHeroVisual(1600);
   $('#creditHeroPhoto').style.backgroundImage=`url("${heroVisual.url}")`;
   $('#statCredits').textContent=s.credits;$('#statRides').textContent=s.rides;$('#statParks').textContent=s.parks;$('#statTop').textContent=s.top==='—'?'—':s.top.length>20?s.top.slice(0,19)+'…':s.top;
   renderQuick();renderActiveTripBanner();
