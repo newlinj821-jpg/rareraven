@@ -1,7 +1,19 @@
-// Remove stale CoasterVerse offline caches from earlier broken builds.
-if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).catch(()=>{});}
-if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('coasterverse-')).map(k=>caches.delete(k)))).catch(()=>{});}
 import {login,loginHealth} from './auth.js';
+
+const cacheResetPromise=(async()=>{
+  try{
+    if('serviceWorker' in navigator){
+      const registrations=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(reg=>reg.unregister()));
+    }
+    if('caches' in globalThis){
+      const keys=await caches.keys();
+      await Promise.all(keys.filter(key=>key.startsWith('coasterverse-')).map(key=>caches.delete(key)));
+    }
+  }catch(err){
+    console.warn('Old CoasterVerse cache cleanup failed',err);
+  }
+})();
 
 const $=s=>document.querySelector(s);
 const form=$('#loginForm');
@@ -26,11 +38,12 @@ if(form){
     if(button){button.disabled=true;button.textContent='SIGNING IN…';}
 
     try{
-      const session=await login(username,password);
+      const authResult=await login(username,password);
       showError('Signed in. Loading CoasterVerse…');
-      const app=await import('./app.js?v=8');
+      await cacheResetPromise;
+      const app=await import('./app.js?v=10');
       if(typeof app.boot!=='function') throw new Error('CoasterVerse application failed to initialize.');
-      await app.boot(session);
+      await app.boot(authResult);
       showError('');
     }catch(err){
       console.error('CoasterVerse login/bootstrap error',err);

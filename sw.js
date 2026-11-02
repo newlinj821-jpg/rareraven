@@ -1,1 +1,9 @@
-const CACHE='coasterverse-v7';const FILES=['./','./index.html','./styles.css','./app.js','./data.js','./auth.js','./login.js','./storage.js','./manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||e.request.url.includes('/.netlify/functions/'))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))})
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',event=>{
+  event.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('coasterverse-')).map(key=>caches.delete(key))))
+      .then(()=>self.registration.unregister())
+      .then(()=>self.clients.claim())
+  );
+});
