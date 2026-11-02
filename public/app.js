@@ -264,8 +264,9 @@ function renderDashboard(){
   $('#statCredits').textContent=s.credits;$('#statRides').textContent=s.rides;$('#statParks').textContent=s.parks;$('#statTop').textContent=s.top==='—'?'—':s.top.length>20?s.top.slice(0,19)+'…':s.top;
   renderQuick();renderActiveTripBanner();
   const parks=parkCompletion().filter(p=>p.done>0&&p.total>0).sort((a,b)=>b.pct-a.pct||b.done-a.done).slice(0,5);
-  $('#dashboardParks').innerHTML=parks.length?parks.map(p=>`<button class="mini-park" data-park="${esc(p.id)}"><div><strong>${esc(p.name)}</strong><span>${p.done}/${p.total} credits</span></div><div class="mini-progress"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></button>`).join(''):'<div class="empty">Ride your first park credit to start completion tracking.</div>';
+  $('#dashboardParks').innerHTML=parks.length?parks.map(p=>`<button class="mini-park" data-park="${esc(p.id)}">${parkArt(p,'thumb')}<div class="mini-park-copy"><strong>${esc(p.name)}</strong><span>${p.done}/${p.total} credits</span><div class="mini-progress"><i style="width:${p.pct}%"></i></div></div><b>${p.pct}%</b></button>`).join(''):'<div class="empty">Ride your first park credit to start completion tracking.</div>';
   $('#dashboardParks').querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>openPark(b.dataset.park));
+  hydrateExactImages($('#dashboardParks'));
   const y=yearStats();$('#yearKicker').textContent=`${y.year} IN COASTERS`;$('#yearTitle').textContent=`${y.year} snapshot`;$('#yearSummary').innerHTML=[['RIDES',y.rides],['NEW CREDITS',y.newCredits],['PARKS',y.parks],['TOP COASTER',y.top]].map(([l,v])=>`<div><strong>${esc(v)}</strong><span>${l}</span></div>`).join('');
   $('#badgePreview').innerHTML=badges().filter(b=>b.unlocked).slice(-6).map(renderBadge).join('')||'<div class="empty">Your first badge unlocks with your first credit.</div>';
   const cm=coasterMap(),pm=parkMap();
