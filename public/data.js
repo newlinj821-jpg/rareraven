@@ -1,0 +1,15 @@
+import c1 from './db/catalog-01.js';
+import c2 from './db/catalog-02.js';
+import c3 from './db/catalog-03.js';
+import c4 from './db/catalog-04.js';
+import c5 from './db/catalog-05.js';
+import c6 from './db/catalog-06.js';
+const B64=[c1,c2,c3,c4,c5,c6].join('');
+const bin=Uint8Array.from(atob(B64),c=>c.charCodeAt(0));
+const stream=new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'));
+const raw=JSON.parse(await new Response(stream).text());
+export const PARKS=raw.p.map(([id,name,city,state,country])=>({id,name,city,state,country}));
+export const COASTERS=raw.c.map(([id,name,parkId,material,classification])=>({id,name,parkId,material,classification}));
+export const parkById=new Map(PARKS.map(p=>[p.id,p]));
+export const coasterById=new Map(COASTERS.map(c=>[c.id,c]));
+export const formatLocation=p=>[p.city,p.state,p.country].filter(Boolean).join(', ');
