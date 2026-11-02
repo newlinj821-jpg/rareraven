@@ -18,3 +18,261 @@
 @media(max-width:1080px){.desktop-nav{display:none}.credit-showcase{grid-template-columns:1fr}.coaster-motion{height:190px}.leader-grid,.settings-grid{grid-template-columns:1fr 1fr}.feature-grid{grid-template-columns:repeat(3,1fr)}.park-grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.badge-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){body{padding-bottom:72px}.topbar{height:60px;padding:0 14px}.brand{font-size:18px}.icon-btn{padding:8px 10px;font-size:11px}.shell{padding:18px 12px 92px}.page-title{display:block;margin-top:8px}.page-title h2{letter-spacing:-2.7px}.page-title .secondary{margin-top:10px}.credit-showcase{min-height:290px;padding:24px 20px;border-radius:24px}.credit-number{font-size:118px;letter-spacing:-8px}.coaster-motion{height:145px;margin-top:-12px}.stats{grid-template-columns:repeat(2,1fr);gap:8px}.stats article{padding:14px}.stats strong{font-size:29px}.panel,.quick-panel,.board{padding:15px;border-radius:18px}.park-grid{grid-template-columns:1fr;gap:10px}.park-card{min-height:250px}.park-card-visual{height:128px}.coaster-card{grid-template-columns:1fr auto}.coaster-card-main{grid-template-columns:96px 1fr;gap:10px}.coaster-image{min-height:118px}.coaster-name{font-size:15px}.coaster-card-copy{padding:11px 0}.tag{font-size:8px}.tag.maker{display:none}.card-metrics{gap:7px}.coaster-card-actions{padding-right:8px}.plus{min-width:56px;height:52px}.favorite{width:56px}.toolbar{grid-template-columns:1fr}.leader-grid,.settings-grid,.share-grid{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}.badge-grid{grid-template-columns:1fr}.trip-form{grid-template-columns:1fr}.trip-live{grid-template-columns:1fr auto}.trip-live .danger{grid-column:1/-1}.timeline-day{grid-template-columns:1fr;gap:5px}.timeline-date{position:static}.park-hero{min-height:380px}.park-hero-content{min-height:380px;align-items:flex-end}.completion-dial{width:112px;height:112px}.park-hero-content h2{font-size:42px;letter-spacing:-2.5px}.filter-tabs{top:65px}.sticky-back{top:65px}.detail-facts{grid-template-columns:repeat(2,1fr)}.detail-form{grid-template-columns:1fr}.rating-buttons{grid-template-columns:repeat(5,1fr)}.modal{padding:16px;border-radius:20px}.modal-hero .coaster-image.hero{height:220px}.mobile-nav{position:fixed;display:grid;grid-template-columns:1fr 1fr 76px 1fr 1fr;left:8px;right:8px;bottom:8px;height:64px;z-index:60;background:#0d1317ec;border:1px solid #2b373f;border-radius:20px;padding:5px;backdrop-filter:blur(18px);box-shadow:0 12px 40px #000b}.mobile-tab,.mobile-log{background:none;color:#7f8d98;border-radius:14px;font-size:9px;font-weight:900;display:grid;place-items:center;align-content:center;gap:3px}.mobile-tab span{font-size:18px}.mobile-tab.active{color:white;background:#171f26}.mobile-log{background:var(--acid);color:#0d1406;transform:translateY(-15px);height:66px;border:5px solid #090d11;border-radius:20px;box-shadow:0 10px 30px #0008}.mobile-log span{font-size:18px;font-weight:1000}.toast{bottom:82px}.photo-credit{display:none}footer{display:none}.ad-preview-wrap{padding:7px}.share-studio textarea{min-height:130px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* v5.1 photo-first compact hero */
+.credit-showcase{
+  position:relative!important;
+  min-height:290px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  overflow:hidden!important;
+  padding:0!important;
+  border-radius:26px!important;
+  background:#08100c!important;
+}
+.credit-showcase:after{display:none!important}
+.credit-photo{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center 46%;
+  animation:heroPhotoDrift 16s ease-in-out infinite alternate;
+  transform:scale(1.03);
+}
+.credit-shade{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,#05080bec 0%,#05080bbb 45%,#05080b35 78%,#05080b26 100%),
+    linear-gradient(0deg,#05080bdc 0%,transparent 58%);
+}
+.credit-copy{
+  position:relative!important;z-index:3!important;
+  padding:28px 30px 30px!important;
+  max-width:620px!important;
+}
+.credit-number{
+  font-size:clamp(92px,15vw,158px)!important;
+  line-height:.78!important;
+  letter-spacing:-8px!important;
+  text-shadow:0 8px 45px #000!important;
+  margin:8px 0 18px!important;
+}
+.credit-label{margin-top:0!important;text-shadow:0 2px 8px #000}
+.hero-inline-stats{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:16px
+}
+.hero-inline-stats span{
+  background:#05090cc7;border:1px solid #ffffff22;color:#dfe8ef;
+  padding:8px 11px;border-radius:999px;font-size:11px;font-weight:800;
+  backdrop-filter:blur(8px)
+}
+.hero-inline-stats strong{color:var(--acid)}
+.coaster-motion{display:none!important}
+.velocity-line{
+  position:absolute;z-index:4;left:0;right:0;bottom:0;height:56px;
+  overflow:hidden;pointer-events:none
+}
+.velocity-rail{
+  position:absolute;left:-3%;right:-3%;bottom:18px;height:4px;
+  background:linear-gradient(90deg,transparent,var(--acid) 15%,var(--acid) 85%,transparent);
+  box-shadow:0 0 18px #b8ff4a80;
+  transform:skewY(-1deg)
+}
+.velocity-rail:after{
+  content:"";position:absolute;left:0;right:0;top:10px;height:2px;
+  background:repeating-linear-gradient(90deg,#9dcf70 0 8px,transparent 8px 17px);
+  opacity:.5
+}
+.velocity-train{
+  position:absolute;bottom:24px;left:-170px;display:flex;gap:4px;
+  animation:velocityPass 5.8s cubic-bezier(.35,.05,.12,1) infinite;
+  filter:drop-shadow(0 5px 10px #000)
+}
+.velocity-train i{
+  display:block;width:34px;height:18px;background:var(--acid);
+  border:3px solid #080c08;border-radius:7px 8px 4px 4px;
+  transform:skewX(-8deg)
+}
+@keyframes velocityPass{
+  0%,8%{transform:translateX(-30px);opacity:0}
+  12%{opacity:1}
+  58%{transform:translateX(calc(100vw + 230px));opacity:1}
+  62%,100%{transform:translateX(calc(100vw + 270px));opacity:0}
+}
+@keyframes heroPhotoDrift{
+  from{transform:scale(1.03) translate3d(0,0,0)}
+  to{transform:scale(1.09) translate3d(-1.5%,-.5%,0)}
+}
+.owner-btn{
+  border:1px solid #59743f;background:#172112;color:var(--acid);
+  border-radius:12px;padding:9px 12px;font-size:11px;font-weight:1000;
+  letter-spacing:.08em;white-space:nowrap
+}
+.owner-btn:before{content:"◆ ";font-size:8px}
+#shareStudio{scroll-margin-top:90px}
+
+/* never fall back to drawn coaster art */
+.coaster-image.generated,.park-track-art{display:none!important}
+
+@media(max-width:700px){
+  .topbar{gap:8px;padding-left:14px;padding-right:14px}
+  .brand{font-size:16px}
+  .owner-btn{padding:8px 9px;font-size:9px}
+  .icon-btn{padding:9px 10px;font-size:11px}
+  .shell{padding-bottom:170px!important}
+  .credit-showcase{min-height:275px!important;border-radius:22px!important}
+  .credit-copy{padding:22px 22px 30px!important}
+  .credit-number{font-size:112px!important;margin-bottom:14px!important}
+  .hero-inline-stats{gap:6px}
+  .hero-inline-stats span{font-size:9px;padding:7px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-nav{bottom:calc(10px + env(safe-area-inset-bottom))!important}
+}
+
+
+/* v5.2 strict exact-photo system */
+.exact-photo-loading{
+  position:relative;
+  overflow:hidden;
+  background:#0d1418;
+}
+.photo-shimmer{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  background:
+    linear-gradient(110deg,transparent 20%,#ffffff0b 38%,#ffffff18 48%,#ffffff0b 58%,transparent 80%),
+    radial-gradient(circle at 20% 20%,#24351f,#0b1115 70%);
+  background-size:220% 100%,100% 100%;
+  animation:photoResolve 1.45s linear infinite;
+}
+.photo-shimmer span{
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:1.2px;
+  color:#9bad9f;
+  text-transform:uppercase;
+}
+@keyframes photoResolve{
+  from{background-position:180% 0,0 0}
+  to{background-position:-40% 0,0 0}
+}
+.exact-photo-ready img{display:block;width:100%;height:100%;object-fit:cover}
+.park-photo-shell{position:absolute;inset:0;overflow:hidden}
+.park-photo-shell img{width:100%;height:100%;object-fit:cover}
+.park-photo-shell .photo-credit{z-index:3}
+
+.coaster-image.thumb{
+  width:58px;
+  height:58px;
+  min-height:58px;
+  flex:0 0 58px;
+  border-radius:10px;
+}
+.coaster-image.thumb .photo-credit{display:none}
+.photo-row{
+  align-items:center!important;
+}
+.timeline-item.photo-row{
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr) auto;
+  gap:12px;
+  padding:10px 4px;
+}
+.timeline-ride.photo-row{
+  grid-template-columns:58px minmax(0,1fr) auto;
+  gap:12px;
+}
+.photo-row-copy{min-width:0}
+.photo-row-copy strong,
+.photo-row-copy span{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.timeline-dot{display:none!important}
+
+.mini-park{
+  grid-template-columns:64px minmax(0,1fr) 48px!important;
+  padding:8px!important;
+  overflow:hidden;
+}
+.mini-park .park-photo-shell{
+  position:relative;
+  width:64px;
+  height:58px;
+  border-radius:10px;
+  grid-column:1;
+  grid-row:1;
+}
+.mini-park .park-photo-shell .photo-credit{display:none}
+.mini-park-copy{min-width:0}
+.mini-park-copy strong,
+.mini-park-copy span{display:block}
+.mini-park-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-park-copy .mini-progress{margin-top:7px}
+.mini-park>b{grid-column:3}
+
+.park-card-visual>.park-photo-shell,
+.park-hero-photo>.park-photo-shell{position:absolute;inset:0}
+.park-hero-photo>.park-photo-shell{border-radius:0}
+
+@media(max-width:700px){
+  .timeline-item.photo-row{grid-template-columns:52px minmax(0,1fr) auto}
+  .timeline-ride.photo-row{grid-template-columns:52px minmax(0,1fr) auto}
+  .coaster-image.thumb{width:52px;height:52px;min-height:52px}
+  .mini-park{grid-template-columns:58px minmax(0,1fr) 42px!important}
+  .mini-park .park-photo-shell{width:58px;height:54px}
+}
+
+/* v5.3 — 9.5 home polish */
+.quick-panel-home{margin-top:14px;margin-bottom:18px;padding:16px 18px 18px;background:linear-gradient(180deg,#10171d,#0b1015)}
+.quick-title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px}
+.quick-title-row h3{margin:3px 0 0;font-size:22px}.quick-checkin{color:var(--acid)}
+.quick-panel-home .coaster-list{margin-top:10px}
+.home-moves-wrap{margin:4px 0 22px}
+.home-moves-title{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 2px 10px}
+.home-moves-title h3{margin:3px 0 0;font-size:20px}
+.home-moves-title>span{display:none;color:var(--muted);font-size:10px;font-weight:850}
+.home-move-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.move-card{min-width:0;min-height:92px;display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:11px;align-items:center;padding:10px;background:linear-gradient(145deg,#0f161b,#0a0f14);border:1px solid #29363f;border-radius:18px;color:white;text-align:left;transition:transform .18s,border-color .18s,background .18s}
+.move-card:hover{transform:translateY(-2px);border-color:#506545;background:#111b17}
+.move-card .coaster-image.thumb,.move-card .park-photo-shell{position:relative;width:58px;height:64px;min-height:64px;border-radius:12px}
+.move-card .park-photo-shell .photo-credit{display:none}.move-copy{min-width:0}
+.move-copy span{display:block;color:var(--acid);font-size:8px;font-weight:1000;letter-spacing:1.25px}
+.move-copy strong{display:block;margin-top:4px;font-size:14px;line-height:1.18;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.move-copy small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.move-card>b{color:#71808b;font-size:18px}.move-percent{color:var(--acid);font-size:18px;font-weight:1000}
+.move-icon,.move-badge{width:58px;height:64px;border-radius:12px;display:grid;place-items:center;background:radial-gradient(circle at 35% 25%,#273c21,#101811 70%);border:1px solid #4a6139;color:var(--acid);font-weight:1000}
+.move-badge{border-radius:50%;width:54px;height:54px;margin:5px 2px}
+
+.credit-number{font-variant-numeric:tabular-nums}
+.velocity-train{opacity:0!important;animation:none!important}
+.credit-showcase.credit-earned .velocity-train{opacity:1!important;animation:creditTrainPass 1.45s cubic-bezier(.18,.72,.22,1) 1!important}
+.credit-showcase.credit-earned .credit-number{animation:creditPop .8s cubic-bezier(.15,.8,.2,1)}
+.credit-showcase.ride-earned .hero-inline-stats span:first-child{animation:rideChip .6s ease}
+@keyframes creditTrainPass{0%{transform:translateX(-50px) scale(.9);opacity:0}10%{opacity:1}100%{transform:translateX(calc(100vw + 280px)) scale(1.06);opacity:0}}
+@keyframes creditPop{0%{transform:scale(1)}35%{transform:scale(1.12);filter:drop-shadow(0 0 26px #b8ff4a88)}100%{transform:scale(1)}}
+@keyframes rideChip{0%,100%{transform:scale(1)}40%{transform:scale(1.08);background:#1b3016}}
+
+@media(max-width:720px){
+  body{padding-bottom:62px!important}
+  .topbar{height:54px!important;padding:0 12px!important;gap:7px!important}
+  .brand{font-size:15px!important}.owner-btn{padding:7px 8px!important;font-size:8px!important;border-radius:10px!important}.icon-btn{padding:7px 9px!important;font-size:10px!important;border-radius:10px!important}
+  .shell{padding:14px 10px 112px!important}
+  .credit-showcase{min-height:248px!important;border-radius:20px!important;margin-bottom:12px!important}
+  .credit-copy{padding:19px 18px 25px!important}.credit-number{font-size:96px!important;letter-spacing:-6px!important;margin:7px 0 12px!important}
+  .credit-label{font-size:10px!important;letter-spacing:1.45px!important}.hero-inline-stats{margin-top:12px!important;gap:5px!important}.hero-inline-stats span{font-size:8px!important;padding:6px 8px!important}
+  .velocity-line{height:43px!important}.velocity-rail{bottom:13px!important}.velocity-train{bottom:19px!important}
+  .quick-panel-home{padding:13px!important;margin:10px 0 15px!important;border-radius:17px!important}.quick-title-row{margin-bottom:9px}.quick-title-row h3{font-size:20px}.quick-panel-home .coaster-list{margin-top:8px}
+  .home-moves-wrap{margin-bottom:17px}.home-moves-title{margin-bottom:8px}.home-moves-title h3{font-size:18px}.home-moves-title>span{display:block}
+  .home-move-strip{display:flex;overflow-x:auto;gap:8px;padding:1px 1px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}.home-move-strip::-webkit-scrollbar{display:none}
+  .move-card{flex:0 0 82%;min-height:82px;scroll-snap-align:start;padding:8px;border-radius:16px}
+  .move-card .coaster-image.thumb,.move-card .park-photo-shell{width:52px;height:58px;min-height:58px}.move-icon,.move-badge{width:50px;height:50px;margin:4px 1px}
+  .move-copy strong{font-size:13px}.move-copy small{font-size:8.5px}
+  .panel,.board{margin-bottom:17px!important}.dashboard-grid{gap:10px!important}
+  .mobile-nav{left:10px!important;right:10px!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;height:56px!important;padding:4px!important;grid-template-columns:1fr 1fr 66px 1fr 1fr!important;border-radius:18px!important}
+  .mobile-tab,.mobile-log{font-size:8px!important;border-radius:12px!important;gap:1px!important}.mobile-tab span{font-size:15px!important}
+  .mobile-log{height:60px!important;transform:translateY(-8px)!important;border-width:4px!important;border-radius:17px!important;box-shadow:0 8px 24px #0008!important}.mobile-log span{font-size:17px!important}
+  .toast{bottom:72px!important}
+}

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#080b0f">
 <title>CoasterVerse — Roller Coaster Credit Tracker</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=20">
+<link rel="stylesheet" href="./styles.css?v=25">
 </head>
 <body>
 <div id="loginScreen" class="auth-shell">
@@ -49,37 +49,49 @@
     <button class="nav-btn" data-view="tripMode">Trip</button>
     <button class="nav-btn" data-view="settings">Settings</button>
   </nav>
+  <button id="ownerHub" class="owner-btn" type="button" hidden>OWNER</button>
   <button id="logout" class="icon-btn">Log out</button>
 </header>
 
 <main class="shell">
 <section id="dashboard" class="view active-view">
   <div class="credit-showcase" id="creditShowcase">
+    <div class="credit-photo" id="creditHeroPhoto" aria-hidden="true"></div>
+    <div class="credit-shade"></div>
     <div class="credit-copy">
-      <div class="kicker">TOTAL COASTER CREDIT COUNT</div>
+      <div class="kicker">TOTAL COASTER CREDITS</div>
       <div class="credit-number" id="heroCredits">0</div>
-      <div class="credit-label">UNIQUE ROLLER COASTERS RIDDEN</div>
-      <p>Every first ride earns a credit. Every reride adds to your lifetime ride count.</p>
+      <div class="credit-label">UNIQUE COASTERS RIDDEN</div>
+      <div class="hero-inline-stats">
+        <span><strong id="heroRideCount">0</strong> rides</span>
+        <span><strong id="heroParkCount">0</strong> parks</span>
+        <span id="heroNextLabel">Next badge</span>
+      </div>
     </div>
-    <div class="coaster-motion" aria-hidden="true">
-      <svg viewBox="0 0 700 260" role="presentation"><path class="track-shadow" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/><path class="track-line" d="M10 205 C90 205 105 52 196 52 C286 52 288 210 382 210 C470 210 486 82 572 82 C625 82 650 140 690 140"/></svg>
-      <div class="coaster-train"><i></i><i></i><i></i></div>
-      <div class="motion-caption">CREDIT CHASER</div>
+    <div class="velocity-line" aria-hidden="true">
+      <div class="velocity-rail"></div>
+      <div class="velocity-train"><i></i><i></i><i></i><i></i></div>
     </div>
   </div>
 
   <div id="activeTripBanner" class="trip-banner" hidden></div>
-  <div class="stats">
-    <article><strong id="statCredits">0</strong><span>Unique credits</span></article>
-    <article><strong id="statRides">0</strong><span>Total rides</span></article>
-    <article><strong id="statParks">0</strong><span>Parks ridden</span></article>
-    <article><strong id="statTop">—</strong><span>Most ridden</span></article>
-  </div>
 
-  <section class="quick-panel">
-    <div class="section-head"><div><div class="kicker">FASTEST WAY IN</div><h3>Quick log</h3></div><span class="hint">Search. Tap +1. Done.</span></div>
-    <div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search coaster, park, type…" autocomplete="off"><button id="clearSearch" class="clear" type="button">×</button></div>
+  <section class="quick-panel quick-panel-home">
+    <div class="quick-title-row">
+      <div><div class="kicker">ONE TAP</div><h3>Quick log</h3></div>
+      <button class="text-btn nav-jump quick-checkin" data-view="tripMode" type="button">Check in →</button>
+    </div>
+    <div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search a coaster or park…" autocomplete="off"><button id="clearSearch" class="clear" type="button">×</button></div>
     <div id="quickResults" class="coaster-list"></div>
+  </section>
+
+  <section class="home-moves-wrap">
+    <div class="home-moves-title"><div><div class="kicker">YOUR NEXT MOVES</div><h3>Keep the count moving</h3></div><span>Swipe →</span></div>
+    <div id="homeMoves" class="home-move-strip">
+      <button id="moveNewest" class="move-card" type="button"></button>
+      <button id="moveClosest" class="move-card" type="button"></button>
+      <button id="moveBadge" class="move-card" type="button"></button>
+    </div>
   </section>
 
   <div class="dashboard-grid">
@@ -133,10 +145,10 @@
 </section>
 
 <section id="tripMode" class="view">
-  <div class="page-title"><div><div class="kicker">PARK DAY MODE</div><h2>Trip mode</h2><p>Start a park day and every ride you log is automatically attached to that trip.</p></div></div>
+  <div class="page-title"><div><div class="kicker">CHECK-IN MODE</div><h2>Trip mode</h2><p>Check in when you arrive. Rides logged during the session count toward Year in Coasters only after you check out.</p></div></div>
   <div id="activeTripPanel"></div>
-  <section class="panel" id="newTripPanel"><h3>Start a trip</h3><div class="form-grid trip-form"><label>Trip name<input id="tripName" placeholder="Epic Universe day"></label><label>Park<select id="tripPark"></select></label><label>Date<input id="tripDate" type="date"></label></div><button id="startTripBtn" class="primary">START TRIP MODE</button></section>
-  <section class="panel"><h3>Trip history</h3><div id="tripHistory"></div></section>
+  <section class="panel" id="newTripPanel"><h3>Check in to a park</h3><div class="form-grid trip-form"><label>Trip name<input id="tripName" placeholder="Epic Universe day"></label><label>Park<select id="tripPark"></select></label><label>Date<input id="tripDate" type="date"></label></div><button id="startTripBtn" class="primary">CHECK IN</button></section>
+  <section class="panel"><h3>Park-day history</h3><div id="tripHistory"></div></section>
 </section>
 
 <section id="settings" class="view">
@@ -147,7 +159,7 @@
     <section class="panel"><h3>Data</h3><p class="muted">Your private ride vault stays encrypted in this browser. Export backups whenever you want.</p><div class="settings-actions"><button id="exportBtn" class="secondary">Export backup</button><button id="importBtn" class="secondary">Import backup</button><input id="importFile" type="file" accept="application/json" hidden></div></section>
   </div>
 
-  <section class="panel share-studio">
+  <section id="shareStudio" class="panel share-studio">
     <div class="section-head"><div><div class="kicker">SHARE STUDIO</div><h3>Generate an ad to post</h3></div><span class="hint">1080 × 1350 social graphic</span></div>
     <div class="share-grid">
       <div class="form-grid">
@@ -170,6 +182,6 @@
 <div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close" type="button">×</button><div id="modalBody"></div></div></div>
 <footer><span>COASTER//VERSE · PRIVATE-FIRST / PUBLIC-READY</span><div><a class="text-btn" href="/image-credits.html">Image credits</a></div></footer>
 </div>
-<script type="module" src="./login.js?v=20"></script>
+<script type="module" src="./login.js?v=25"></script>
 </body>
 </html>

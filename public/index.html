@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#080b0f">
 <title>CoasterVerse — Roller Coaster Credit Tracker</title>
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./styles.css?v=24">
+<link rel="stylesheet" href="./styles.css?v=25">
 </head>
 <body>
 <div id="loginScreen" class="auth-shell">
@@ -65,7 +65,7 @@
       <div class="hero-inline-stats">
         <span><strong id="heroRideCount">0</strong> rides</span>
         <span><strong id="heroParkCount">0</strong> parks</span>
-        <span id="heroTopLabel">Start riding</span>
+        <span id="heroNextLabel">Next badge</span>
       </div>
     </div>
     <div class="velocity-line" aria-hidden="true">
@@ -75,17 +75,23 @@
   </div>
 
   <div id="activeTripBanner" class="trip-banner" hidden></div>
-  <div class="stats">
-    <article><strong id="statCredits">0</strong><span>Unique credits</span></article>
-    <article><strong id="statRides">0</strong><span>Total rides</span></article>
-    <article><strong id="statParks">0</strong><span>Parks ridden</span></article>
-    <article><strong id="statTop">—</strong><span>Most ridden</span></article>
-  </div>
 
-  <section class="quick-panel">
-    <div class="section-head"><div><div class="kicker">FASTEST WAY IN</div><h3>Quick log</h3></div><span class="hint">Search. Tap +1. Done.</span></div>
-    <div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search coaster, park, type…" autocomplete="off"><button id="clearSearch" class="clear" type="button">×</button></div>
+  <section class="quick-panel quick-panel-home">
+    <div class="quick-title-row">
+      <div><div class="kicker">ONE TAP</div><h3>Quick log</h3></div>
+      <button class="text-btn nav-jump quick-checkin" data-view="tripMode" type="button">Check in →</button>
+    </div>
+    <div class="search-wrap"><input id="quickSearch" class="search" placeholder="Search a coaster or park…" autocomplete="off"><button id="clearSearch" class="clear" type="button">×</button></div>
     <div id="quickResults" class="coaster-list"></div>
+  </section>
+
+  <section class="home-moves-wrap">
+    <div class="home-moves-title"><div><div class="kicker">YOUR NEXT MOVES</div><h3>Keep the count moving</h3></div><span>Swipe →</span></div>
+    <div id="homeMoves" class="home-move-strip">
+      <button id="moveNewest" class="move-card" type="button"></button>
+      <button id="moveClosest" class="move-card" type="button"></button>
+      <button id="moveBadge" class="move-card" type="button"></button>
+    </div>
   </section>
 
   <div class="dashboard-grid">
@@ -176,6 +182,6 @@
 <div id="modal" class="modal-wrap" hidden><div class="modal"><button id="modalClose" class="modal-close" type="button">×</button><div id="modalBody"></div></div></div>
 <footer><span>COASTER//VERSE · PRIVATE-FIRST / PUBLIC-READY</span><div><a class="text-btn" href="/image-credits.html">Image credits</a></div></footer>
 </div>
-<script type="module" src="./login.js?v=24"></script>
+<script type="module" src="./login.js?v=25"></script>
 </body>
 </html>

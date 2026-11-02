@@ -14,7 +14,7 @@ for(const file of ['public/app.js','public/login.js','public/meta.js','public/pu
   execFileSync(process.execPath,['--check',file],{stdio:'inherit'});
 }
 
-for(const id of ['creditShowcase','creditHeroPhoto','heroCredits','ownerHub','parkGrid','parkHeader','parkCoasters','timelineFull','manufacturerStats','badgeGrid','tripMode','mobileLog','publicLeaderboard','publicModeToggle','shareStudio','adCanvas','generateAdBtn']){
+for(const id of ['creditShowcase','creditHeroPhoto','heroCredits','heroNextLabel','homeMoves','moveNewest','moveClosest','moveBadge','ownerHub','parkGrid','parkHeader','parkCoasters','timelineFull','manufacturerStats','badgeGrid','tripMode','mobileLog','publicLeaderboard','publicModeToggle','shareStudio','adCanvas','generateAdBtn']){
   assert(html.includes(`id="${id}"`),`Missing required UI target #${id}`);
 }
 
@@ -51,4 +51,12 @@ assert(resolver.includes("getStore('coasterverse-images')"),'Resolved image cach
 assert(!app.includes('coaster-image generated'),'Generated coaster art fallback must not return');
 assert(!data.includes('DecompressionStream'),'Compressed runtime catalog loader must not return');
 assert(data.includes("./db/parks.js")&&data.includes("./db/coasters-5.js"),'Uncompressed catalog modules missing');
-console.log('OK: CoasterVerse exact-photo/public-mode/check-in smoke checks passed.');
+
+assert(!html.includes('class="stats"'),'Home must not repeat hero totals in a duplicate KPI grid');
+assert(!app.includes("$('#statTop')"),'Removed Most Ridden KPI must not be rendered on Home');
+assert(app.includes("list=list.slice(0,5)"),'Quick Log should stay compact on Home');
+assert(app.includes('function triggerRideFeedback'),'Ride feedback animation hook missing');
+assert(css.includes('.home-move-strip'),'Your Next Moves strip missing');
+assert(css.includes('.credit-showcase.credit-earned .velocity-train'),'Coaster animation must only run when a new credit is earned');
+assert(css.includes('height:56px!important'),'Compact mobile navigation override missing');
+console.log('OK: CoasterVerse 9.5 home/exact-photo/public-mode/check-in checks passed.');

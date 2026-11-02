@@ -1,6 +1,7 @@
 import {PARKS,COASTERS,formatLocation} from './data.js';
 import {loadVault,saveVault,exportVault,importVaultText} from './storage.js';
-import {manufacturerFor,coasterVisual,parkVisual,shortType} from './meta.js';
+import {manufacturerFor,coasterVisual,parkVisual,shortType,creditHeroVisual} from './meta.js?v=25';
+import {resolveExactImage,getCachedImage} from './image-api.js?v=25';
 import {getPublicConfig,getPublicLeaderboard,setPublicMode,getOwnerPublicMode,publishProfile,clearPublicSession,getCloudVault,saveCloudVault} from './public-api.js';
 
 const $=s=>document.querySelector(s);
@@ -54,6 +55,15 @@ function animateNumber(el,to){
   requestAnimationFrame(tick);
 }
 
+function triggerRideFeedback(isCredit){
+  const hero=$('#creditShowcase');
+  if(!hero) return;
+  hero.classList.remove('credit-earned','ride-earned');
+  void hero.offsetWidth;
+  hero.classList.add(isCredit?'credit-earned':'ride-earned');
+  setTimeout(()=>hero.classList.remove('credit-earned','ride-earned'),isCredit?1800:700);
+}
+
 async function persist({sync=true}={}){
   await saveVault(activePassword,vault);
   renderAll();
@@ -98,6 +108,7 @@ async function logRide(coasterId,date=today()){
   const ride={id:crypto.randomUUID(),coasterId,date,loggedAt:new Date().toISOString(),tripId:trip?.id||null};
   vault.rides.unshift(ride);
   await persist();
+  triggerRideFeedback(first);
   showToast(first?`NEW CREDIT · ${c.name}`:`+1 RIDE · ${c.name} · ${countFor(coasterId)} total`,async()=>{
     vault.rides=vault.rides.filter(r=>r.id!==ride.id);
     await persist();
@@ -108,12 +119,46 @@ async function logRide(coasterId,date=today()){
 function setRating(id,patch){vault.ratings[id]={...ratingFor(id),...patch}}
 function toggleFavorite(id){setRating(id,{favorite:!ratingFor(id).favorite});persist()}
 
-function coasterArt(c,size='card'){
-  const visual=coasterVisual(c.id,size==='hero'?1400:500);
-  if(visual) return `<div class="coaster-image ${size}"><img src="${esc(visual.url)}" alt="${esc(c.name)}" loading="lazy"><span class="photo-credit">${esc(visual.credit)}</span></div>`;
-  return `<div class="coaster-image generated ${size}" aria-hidden="true"><div class="mini-track"><i></i><i></i><i></i></div><span>${esc(shortType(c)).toUpperCase()}</span></div>`;
+function photoShell({type,id,name,park='',size='card',visual=null,eager=false}){
+  const className=type==='park'?'park-photo-shell':'coaster-image '+size;
+  if(visual?.url){
+    return `<div class="${className} exact-photo-ready"><img src="${esc(visual.url)}" alt="${esc(name)}" loading="${eager?'eager':'lazy'}"><span class="photo-credit">${esc(visual.credit||visual.source||'Wikimedia Commons')}</span></div>`;
+  }
+  return `<div class="${className} exact-photo-loading" data-exact-image data-photo-type="${esc(type)}" data-photo-id="${esc(id)}" data-photo-name="${esc(name)}" data-photo-park="${esc(park)}" data-photo-size="${size}"><div class="photo-shimmer"><span>Finding exact photo…</span></div></div>`;
 }
 
+function coasterArt(c,size='card'){
+  const p=parkMap().get(c.parkId);
+  const visual=coasterVisual(c.id,size==='hero'?1400:600)||getCachedImage('coaster',c.id);
+  return photoShell({type:'coaster',id:c.id,name:c.name,park:p?.name||'',size,visual,eager:size==='hero'});
+}
+
+function parkArt(p,size='card',eager=false){
+  const visual=parkVisual(p.id,[],size==='hero'?1400:900)||getCachedImage('park',p.id);
+  return photoShell({type:'park',id:p.id,name:p.name,size,visual,eager});
+}
+
+async function hydrateExactImages(root=document){
+  const targets=[...root.querySelectorAll('[data-exact-image]')];
+  await Promise.allSettled(targets.map(async el=>{
+    if(el.dataset.resolving==='1') return;
+    el.dataset.resolving='1';
+    try{
+      const image=await resolveExactImage({type:el.dataset.photoType||'coaster',id:el.dataset.photoId,name:el.dataset.photoName,park:el.dataset.photoPark||'',width:el.dataset.photoSize==='hero'?1400:700});
+      if(!el.isConnected) return;
+      el.classList.remove('exact-photo-loading');
+      el.classList.add('exact-photo-ready');
+      el.innerHTML=`<img src="${esc(image.url)}" alt="${esc(el.dataset.photoName)}" loading="${el.dataset.photoSize==='hero'?'eager':'lazy'}"><span class="photo-credit">${esc(image.credit||image.source||'Wikimedia Commons')}</span>`;
+      el.removeAttribute('data-exact-image');
+    }catch(error){
+      console.warn('Exact image lookup pending',el.dataset.photoName,error);
+      el.dataset.resolving='0';
+      const attempts=Number(el.dataset.photoAttempts||0)+1;
+      el.dataset.photoAttempts=String(attempts);
+      if(attempts<3&&el.isConnected) setTimeout(()=>hydrateExactImages(el.parentElement||document),2200*attempts);
+    }
+  }));
+}
 function coasterCard(c){
   const p=parkMap().get(c.parkId),n=countFor(c.id),r=ratingFor(c.id),manufacturer=manufacturerFor(c);
   return `<article class="coaster-card">
@@ -131,6 +176,7 @@ function bindCoasterCards(root=document){
   root.querySelectorAll('[data-log]').forEach(b=>b.onclick=e=>{e.stopPropagation();logRide(b.dataset.log)});
   root.querySelectorAll('[data-info]').forEach(b=>b.onclick=e=>{e.stopPropagation();openCoaster(b.dataset.info)});
   root.querySelectorAll('[data-favorite]').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleFavorite(b.dataset.favorite)});
+  hydrateExactImages(root);
 }
 
 function basicStats(){
@@ -153,21 +199,58 @@ function firstRideMap(){
   return map;
 }
 
+function sessionCheckIn(trip){return trip?.checkedInAt||trip?.startedAt||null}
+function sessionCheckOut(trip){return trip?.checkedOutAt||trip?.endedAt||null}
+function sessionDate(trip){return String(trip?.date||sessionCheckIn(trip)||'').slice(0,10)}
+function completedSessions(){return (vault.trips||[]).filter(t=>sessionCheckIn(t)&&sessionCheckOut(t))}
+
 function yearStats(year=yearNow()){
-  const prefix=String(year),cm=coasterMap(),rides=vault.rides.filter(r=>String(r.date||'').startsWith(prefix)),firsts=firstRideMap();
-  const newCredits=[...firsts.values()].filter(r=>String(r.date||'').startsWith(prefix)),parks=new Set(rides.map(r=>cm.get(r.coasterId)?.parkId).filter(Boolean));
+  const prefix=String(year),cm=coasterMap();
+  const sessions=completedSessions().filter(t=>sessionDate(t).startsWith(prefix));
+  const sessionIds=new Set(sessions.map(t=>t.id));
+  const rides=vault.rides.filter(r=>r.tripId&&sessionIds.has(r.tripId));
+  const parks=new Set(sessions.map(t=>t.parkId).filter(Boolean));
+
   const counts=new Map(),days=new Map(),months=new Map();
-  for(const ride of rides){counts.set(ride.coasterId,(counts.get(ride.coasterId)||0)+1);days.set(ride.date,(days.get(ride.date)||0)+1);const month=String(ride.date||'').slice(0,7);months.set(month,(months.get(month)||0)+1)}
-  const top=[...counts].sort((a,b)=>b[1]-a[1])[0],busiest=[...days].sort((a,b)=>b[1]-a[1])[0],month=[...months].sort((a,b)=>b[1]-a[1])[0];
-  return {year,rides:rides.length,newCredits:newCredits.length,parks:parks.size,top:top?cm.get(top[0])?.name||'—':'—',topCount:top?.[1]||0,busiestDay:busiest?.[0]||'—',busiestCount:busiest?.[1]||0,busiestMonth:month?.[0]||'—',monthCount:month?.[1]||0};
+  for(const ride of rides) counts.set(ride.coasterId,(counts.get(ride.coasterId)||0)+1);
+  for(const trip of sessions){
+    const day=sessionDate(trip);
+    const rideCount=vault.rides.filter(r=>r.tripId===trip.id).length;
+    days.set(day,(days.get(day)||0)+rideCount);
+    const month=day.slice(0,7);
+    months.set(month,(months.get(month)||0)+rideCount);
+  }
+
+  const firsts=firstRideMap();
+  const newCredits=[...firsts.values()].filter(r=>r.tripId&&sessionIds.has(r.tripId));
+  const top=[...counts].sort((a,b)=>b[1]-a[1])[0];
+  const busiest=[...days].sort((a,b)=>b[1]-a[1])[0];
+  const month=[...months].sort((a,b)=>b[1]-a[1])[0];
+
+  return {
+    year,
+    rides:rides.length,
+    newCredits:newCredits.length,
+    parks:parks.size,
+    visits:sessions.length,
+    top:top?cm.get(top[0])?.name||'—':'—',
+    topCount:top?.[1]||0,
+    busiestDay:busiest?.[0]||'—',
+    busiestCount:busiest?.[1]||0,
+    busiestMonth:month?.[0]||'—',
+    monthCount:month?.[1]||0
+  };
 }
 
 function badges(){
   const s=basicStats(),ids=creditedIds(),cm=coasterMap(),completions=parkCompletion(),dayCounts=new Map();
-  for(const r of vault.rides) dayCounts.set(r.date,(dayCounts.get(r.date)||0)+1);
+  for(const trip of completedSessions()){
+    const count=vault.rides.filter(r=>r.tripId===trip.id).length;
+    dayCounts.set(sessionDate(trip),(dayCounts.get(sessionDate(trip))||0)+count);
+  }
   const hasClass=term=>[...ids].some(id=>String(cm.get(id)?.classification||'').toLowerCase().includes(term)),maxDay=Math.max(0,...dayCounts.values()),rated=Object.values(vault.ratings).filter(r=>r.score);
   return [
-    ['FIRST DROP','Earn your first coaster credit',s.credits>=1,'01'],['DOUBLE DIGITS','Reach 10 unique credits',s.credits>=10,'10'],['CREDIT HUNTER','Reach 25 unique credits',s.credits>=25,'25'],['HALF CENTURY','Reach 50 unique credits',s.credits>=50,'50'],['CENTURY CLUB','Reach 100 unique credits',s.credits>=100,'100'],['PARK HOPPER','Ride coasters at 5 parks',s.parks>=5,'5P'],['CLEAN SWEEP','Complete every credit at a park',completions.some(p=>p.complete),'✓'],['300 CLUB','Ride a giga coaster',hasClass('giga'),'300'],['HYPER FIX','Ride a hyper coaster',hasClass('hyper'),'200'],['RMC INITIATE','Ride an RMC',hasClass('rmc'),'RMC'],['LAUNCH ADDICT','Ride a launch coaster',hasClass('launch'),'↗'],['WOODIE','Ride a wooden coaster',[...ids].some(id=>cm.get(id)?.material==='Wood'),'WOOD'],['PARK MARATHON','Log 10 rides in one day',maxDay>=10,'10X'],['ONE MORE TIME','Ride one coaster 10 times',s.topCount>=10,'+10'],['COASTER CRITIC','Rate 10 coasters',rated.length>=10,'★']
+    ['FIRST DROP','Earn your first coaster credit',s.credits>=1,'01'],['DOUBLE DIGITS','Reach 10 unique credits',s.credits>=10,'10'],['CREDIT HUNTER','Reach 25 unique credits',s.credits>=25,'25'],['HALF CENTURY','Reach 50 unique credits',s.credits>=50,'50'],['CENTURY CLUB','Reach 100 unique credits',s.credits>=100,'100'],['PARK HOPPER','Ride coasters at 5 parks',s.parks>=5,'5P'],['CLEAN SWEEP','Complete every credit at a park',completions.some(p=>p.complete),'✓'],['300 CLUB','Ride a giga coaster',hasClass('giga'),'300'],['HYPER FIX','Ride a hyper coaster',hasClass('hyper'),'200'],['RMC INITIATE','Ride an RMC',hasClass('rmc'),'RMC'],['LAUNCH ADDICT','Ride a launch coaster',hasClass('launch'),'↗'],['WOODIE','Ride a wooden coaster',[...ids].some(id=>cm.get(id)?.material==='Wood'),'WOOD'],['PARK MARATHON','Check out after 10 rides in one park day',maxDay>=10,'10X'],['ONE MORE TIME','Ride one coaster 10 times',s.topCount>=10,'+10'],['COASTER CRITIC','Rate 10 coasters',rated.length>=10,'★']
   ].map(([name,desc,unlocked,mark])=>({name,desc,unlocked,mark}));
 }
 
@@ -177,34 +260,118 @@ function renderQuick(){
   const q=$('#quickSearch').value.trim().toLowerCase();let list=allCoasters();
   if(q) list=list.filter(c=>{const p=parkMap().get(c.parkId),m=manufacturerFor(c);return `${c.name} ${p?.name} ${p?.city} ${p?.state} ${c.material} ${c.classification} ${m}`.toLowerCase().includes(q)});
   else list=[...list].sort((a,b)=>(ratingFor(b.id).favorite?1:0)-(ratingFor(a.id).favorite?1:0)||countFor(b.id)-countFor(a.id)||a.name.localeCompare(b.name));
-  list=list.slice(0,8);$('#quickResults').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No coaster found. Add it as a custom coaster.</div>';bindCoasterCards($('#quickResults'));
+  list=list.slice(0,5);$('#quickResults').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No coaster found. Add it as a custom coaster.</div>';bindCoasterCards($('#quickResults'));
 }
 
 function renderDashboard(){
-  const s=basicStats();animateNumber($('#heroCredits'),s.credits);$('#statCredits').textContent=s.credits;$('#statRides').textContent=s.rides;$('#statParks').textContent=s.parks;$('#statTop').textContent=s.top==='—'?'—':s.top.length>20?s.top.slice(0,19)+'…':s.top;
-  renderQuick();renderActiveTripBanner();
-  const parks=parkCompletion().filter(p=>p.done>0&&p.total>0).sort((a,b)=>b.pct-a.pct||b.done-a.done).slice(0,5);
-  $('#dashboardParks').innerHTML=parks.length?parks.map(p=>`<button class="mini-park" data-park="${esc(p.id)}"><div><strong>${esc(p.name)}</strong><span>${p.done}/${p.total} credits</span></div><div class="mini-progress"><i style="width:${p.pct}%"></i></div><b>${p.pct}%</b></button>`).join(''):'<div class="empty">Ride your first park credit to start completion tracking.</div>';
+  const s=basicStats();
+  const y=yearStats();
+  const allBadges=badges();
+  const nextBadge=allBadges.find(b=>!b.unlocked);
+
+  animateNumber($('#heroCredits'),s.credits);
+  $('#heroRideCount').textContent=s.rides;
+  $('#heroParkCount').textContent=s.parks;
+  $('#heroNextLabel').textContent=nextBadge?`NEXT · ${nextBadge.name}`:'BADGE CABINET COMPLETE';
+
+  const heroVisual=creditHeroVisual(1600);
+  $('#creditHeroPhoto').style.backgroundImage=`url("${heroVisual.url}")`;
+
+  renderQuick();
+  renderActiveTripBanner();
+
+  const cm=coasterMap(),pm=parkMap();
+  const firsts=[...firstRideMap().entries()]
+    .map(([id,ride])=>({c:cm.get(id),ride}))
+    .filter(x=>x.c)
+    .sort((a,b)=>String(b.ride.loggedAt||b.ride.date).localeCompare(String(a.ride.loggedAt||a.ride.date)));
+  const newest=firsts[0]||null;
+
+  const completion=parkCompletion().filter(p=>p.total>0&&p.done>0);
+  const closest=(completion.filter(p=>!p.complete).sort((a,b)=>b.pct-a.pct||b.done-a.done)[0])
+    || completion.sort((a,b)=>b.pct-a.pct||b.done-a.done)[0]
+    || null;
+
+  $('#moveNewest').innerHTML=newest
+    ? `${coasterArt(newest.c,'thumb')}<div class="move-copy"><span>NEWEST CREDIT</span><strong>${esc(newest.c.name)}</strong><small>${esc(pm.get(newest.c.parkId)?.name||'')} · ${esc(newest.ride.date||'')}</small></div><b>→</b>`
+    : `<div class="move-icon">+1</div><div class="move-copy"><span>NEWEST CREDIT</span><strong>Log your first coaster</strong><small>Your collection starts here.</small></div><b>→</b>`;
+
+  $('#moveClosest').innerHTML=closest
+    ? `${parkArt(closest,'thumb')}<div class="move-copy"><span>CLOSEST PARK</span><strong>${esc(closest.name)}</strong><small>${closest.done}/${closest.total} ridden · ${closest.pct}% complete</small></div><div class="move-percent">${closest.pct}%</div>`
+    : `<div class="move-icon">P</div><div class="move-copy"><span>PARK COMPLETION</span><strong>Start a park collection</strong><small>Ride a coaster to begin.</small></div><b>→</b>`;
+
+  $('#moveBadge').innerHTML=nextBadge
+    ? `<div class="move-badge">${esc(nextBadge.mark)}</div><div class="move-copy"><span>NEXT BADGE</span><strong>${esc(nextBadge.name)}</strong><small>${esc(nextBadge.desc)}</small></div><b>→</b>`
+    : `<div class="move-badge">★</div><div class="move-copy"><span>ACHIEVEMENTS</span><strong>Badge cabinet complete</strong><small>Keep piling on the rides.</small></div><b>→</b>`;
+
+  $('#moveNewest').onclick=()=>newest?openCoaster(newest.c.id):openQuickLog();
+  $('#moveClosest').onclick=()=>closest?openPark(closest.id):switchView('parks');
+  $('#moveBadge').onclick=()=>switchView('statsView');
+  hydrateExactImages($('#homeMoves'));
+
+  const parks=completion.sort((a,b)=>b.pct-a.pct||b.done-a.done).slice(0,5);
+  $('#dashboardParks').innerHTML=parks.length?parks.map(p=>`<button class="mini-park" data-park="${esc(p.id)}">${parkArt(p,'thumb')}<div class="mini-park-copy"><strong>${esc(p.name)}</strong><span>${p.done}/${p.total} credits</span><div class="mini-progress"><i style="width:${p.pct}%"></i></div></div><b>${p.pct}%</b></button>`).join(''):'<div class="empty">Ride your first park credit to start completion tracking.</div>';
   $('#dashboardParks').querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>openPark(b.dataset.park));
-  const y=yearStats();$('#yearKicker').textContent=`${y.year} IN COASTERS`;$('#yearTitle').textContent=`${y.year} snapshot`;$('#yearSummary').innerHTML=[['RIDES',y.rides],['NEW CREDITS',y.newCredits],['PARKS',y.parks],['TOP COASTER',y.top]].map(([l,v])=>`<div><strong>${esc(v)}</strong><span>${l}</span></div>`).join('');
-  $('#badgePreview').innerHTML=badges().filter(b=>b.unlocked).slice(-6).map(renderBadge).join('')||'<div class="empty">Your first badge unlocks with your first credit.</div>';
-  const cm=coasterMap(),pm=parkMap();$('#recentRides').innerHTML=vault.rides.slice(0,8).map(r=>{const c=cm.get(r.coasterId),p=pm.get(c?.parkId);return `<button class="timeline-item ride-link" data-info="${esc(r.coasterId)}"><div><strong>${esc(c?.name||'Unknown coaster')}</strong><br><span>${esc(p?.name||'')}</span></div><span>${esc(r.date||'')}</span></button>`}).join('')||'<div class="empty">Your ride history starts with one tap.</div>';$('#recentRides').querySelectorAll('[data-info]').forEach(b=>b.onclick=()=>openCoaster(b.dataset.info));
+  hydrateExactImages($('#dashboardParks'));
+
+  $('#yearKicker').textContent=`${y.year} IN COASTERS`;
+  $('#yearTitle').textContent=y.visits?`${y.visits} checked-out park day${y.visits===1?'':'s'}`:'No checked-out park days yet';
+  $('#yearSummary').innerHTML=[
+    ['RIDES',y.rides],
+    ['NEW CREDITS',y.newCredits],
+    ['PARK DAYS',y.visits],
+    ['PARKS',y.parks]
+  ].map(([l,v])=>`<div><strong>${esc(v)}</strong><span>${l}</span></div>`).join('');
+
+  $('#badgePreview').innerHTML=allBadges.filter(b=>b.unlocked).slice(-6).map(renderBadge).join('')||'<div class="empty">Your first badge unlocks with your first credit.</div>';
+
+  $('#recentRides').innerHTML=vault.rides.slice(0,8).map(r=>{
+    const c=cm.get(r.coasterId),p=pm.get(c?.parkId);
+    return `<button class="timeline-item ride-link photo-row" data-info="${esc(r.coasterId)}">${c?coasterArt(c,'thumb'):''}<div class="photo-row-copy"><strong>${esc(c?.name||'Unknown coaster')}</strong><span>${esc(p?.name||'')}</span></div><span>${esc(r.date||'')}</span></button>`;
+  }).join('')||'<div class="empty">Your ride history starts with one tap.</div>';
+  $('#recentRides').querySelectorAll('[data-info]').forEach(b=>b.onclick=()=>openCoaster(b.dataset.info));
+  hydrateExactImages($('#recentRides'));
 }
 
 function renderParks(){
-  const q=$('#parkSearch').value.trim().toLowerCase();let parks=parkCompletion().filter(p=>`${p.name} ${formatLocation(p)}`.toLowerCase().includes(q));parks.sort((a,b)=>(b.done>0)-(a.done>0)||b.pct-a.pct||a.name.localeCompare(b.name));
-  $('#parkGrid').innerHTML=parks.map(p=>{const coasters=allCoasters().filter(c=>c.parkId===p.id),visual=parkVisual(p.id,coasters,900);return `<button class="park-card" data-park="${esc(p.id)}"><div class="park-card-visual">${visual?`<img src="${esc(visual.url)}" alt="" loading="lazy">`:'<div class="park-track-art"><i></i><i></i></div>'}<div class="park-card-overlay"></div><div class="park-ring" style="--pct:${p.pct}"><span>${p.pct}%</span></div></div><div class="park-card-body"><div class="kicker">${p.done} OF ${p.total} RIDDEN</div><h3>${esc(p.name)}</h3><div class="location">${esc(formatLocation(p))}</div><div class="progress"><i style="width:${p.pct}%"></i></div><div class="tap-hint">TAP TO OPEN PARK →</div></div></button>`}).join('')||'<div class="empty">No park found.</div>';
+  const q=$('#parkSearch').value.trim().toLowerCase();
+  let parks=parkCompletion().filter(p=>`${p.name} ${formatLocation(p)}`.toLowerCase().includes(q));
+  parks.sort((a,b)=>(b.done>0)-(a.done>0)||b.pct-a.pct||a.name.localeCompare(b.name));
+  $('#parkGrid').innerHTML=parks.map(p=>`<button class="park-card" data-park="${esc(p.id)}"><div class="park-card-visual">${parkArt(p,'card')}<div class="park-card-overlay"></div><div class="park-ring" style="--pct:${p.pct}"><span>${p.pct}%</span></div></div><div class="park-card-body"><div class="kicker">${p.done} OF ${p.total} RIDDEN</div><h3>${esc(p.name)}</h3><div class="location">${esc(formatLocation(p))}</div><div class="progress"><i style="width:${p.pct}%"></i></div><div class="tap-hint">TAP TO OPEN PARK →</div></div></button>`).join('')||'<div class="empty">No park found.</div>';
   $('#parkGrid').querySelectorAll('[data-park]').forEach(b=>b.onclick=()=>openPark(b.dataset.park));
+  hydrateExactImages($('#parkGrid'));
 }
-
 function openPark(id){activeParkId=id;parkFilter='all';$$('#parkFilters [data-park-filter]').forEach(b=>b.classList.toggle('active',b.dataset.parkFilter==='all'));renderParkDetail();switchView('parkDetail')}
-function renderParkDetail(){const p=parkMap().get(activeParkId);if(!p)return;const list=allCoasters().filter(c=>c.parkId===p.id).sort((a,b)=>a.name.localeCompare(b.name)),done=list.filter(c=>countFor(c.id)>0).length,pct=list.length?Math.round(done/list.length*100):0,visual=parkVisual(p.id,list,1400);$('#parkHeader').innerHTML=`<section class="park-hero"><div class="park-hero-photo">${visual?`<img src="${esc(visual.url)}" alt="" loading="eager">`:'<div class="park-track-art large"><i></i><i></i></div>'}<div class="park-hero-shade"></div></div><div class="park-hero-content"><div><div class="kicker">${list.length} ROLLER COASTERS</div><h2>${esc(p.name)}</h2><p>${esc(formatLocation(p))}</p><button class="primary small" id="tripThisPark">START TRIP HERE</button></div><div class="completion-dial" style="--pct:${pct}"><strong>${pct}%</strong><span>${done}/${list.length} credits</span></div></div></section>`;$('#tripThisPark').onclick=()=>startTripForPark(p.id);renderParkCoasters()}
+function renderParkDetail(){
+  const p=parkMap().get(activeParkId);if(!p)return;
+  const list=allCoasters().filter(c=>c.parkId===p.id).sort((a,b)=>a.name.localeCompare(b.name));
+  const done=list.filter(c=>countFor(c.id)>0).length,pct=list.length?Math.round(done/list.length*100):0;
+  $('#parkHeader').innerHTML=`<section class="park-hero"><div class="park-hero-photo">${parkArt(p,'hero',true)}<div class="park-hero-shade"></div></div><div class="park-hero-content"><div><div class="kicker">${list.length} ROLLER COASTERS</div><h2>${esc(p.name)}</h2><p>${esc(formatLocation(p))}</p><button class="primary small" id="tripThisPark">CHECK IN HERE</button></div><div class="completion-dial" style="--pct:${pct}"><strong>${pct}%</strong><span>${done}/${list.length} credits</span></div></div></section>`;
+  $('#tripThisPark').onclick=()=>startTripForPark(p.id);
+  hydrateExactImages($('#parkHeader'));
+  renderParkCoasters();
+}
 function renderParkCoasters(){if(!activeParkId)return;let list=allCoasters().filter(c=>c.parkId===activeParkId).sort((a,b)=>a.name.localeCompare(b.name));if(parkFilter==='ridden')list=list.filter(c=>countFor(c.id)>0);if(parkFilter==='unridden')list=list.filter(c=>countFor(c.id)===0);$('#parkCoasters').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No coasters in this filter.</div>';bindCoasterCards($('#parkCoasters'))}
 
 function renderCredits(){const q=$('#creditSearch').value.trim().toLowerCase(),ids=creditedIds();let list=allCoasters().filter(c=>ids.has(c.id));if(q)list=list.filter(c=>{const p=parkMap().get(c.parkId);return `${c.name} ${p?.name} ${c.classification} ${manufacturerFor(c)}`.toLowerCase().includes(q)});const sort=$('#creditSort').value;list.sort((a,b)=>{const ra=ratingFor(a.id),rb=ratingFor(b.id);if(sort==='rank')return(ra.rank||99999)-(rb.rank||99999)||(rb.score||0)-(ra.score||0)||a.name.localeCompare(b.name);if(sort==='rating')return(rb.score||0)-(ra.score||0)||countFor(b.id)-countFor(a.id);if(sort==='rides')return countFor(b.id)-countFor(a.id)||a.name.localeCompare(b.name);return a.name.localeCompare(b.name)});$('#creditList').innerHTML=list.length?list.map(coasterCard).join(''):'<div class="empty">No credits yet.</div>';bindCoasterCards($('#creditList'))}
 
-function renderTimeline(){const cm=coasterMap(),pm=parkMap(),groups=new Map();for(const ride of [...vault.rides].sort((a,b)=>String(b.loggedAt||b.date).localeCompare(String(a.loggedAt||a.date)))){if(!groups.has(ride.date))groups.set(ride.date,[]);groups.get(ride.date).push(ride)}$('#timelineFull').innerHTML=[...groups].map(([date,rides])=>`<section class="timeline-day"><div class="timeline-date"><strong>${esc(date)}</strong><span>${rides.length} ride${rides.length===1?'':'s'}</span></div><div>${rides.map(r=>{const c=cm.get(r.coasterId),p=pm.get(c?.parkId),trip=vault.trips.find(t=>t.id===r.tripId);return `<button class="timeline-ride" data-info="${esc(r.coasterId)}"><span class="timeline-dot"></span><div><strong>${esc(c?.name||'Unknown coaster')}</strong><span>${esc(p?.name||'')}${trip?` · ${esc(trip.name)}`:''}</span></div><time>${esc(new Date(r.loggedAt||r.date).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))}</time></button>`}).join('')}</div></section>`).join('')||'<div class="empty">No rides logged yet.</div>';$('#timelineFull').querySelectorAll('[data-info]').forEach(b=>b.onclick=()=>openCoaster(b.dataset.info))}
-
+function renderTimeline(){
+  const cm=coasterMap(),pm=parkMap(),groups=new Map();
+  for(const ride of [...vault.rides].sort((a,b)=>String(b.loggedAt||b.date).localeCompare(String(a.loggedAt||a.date)))){
+    if(!groups.has(ride.date))groups.set(ride.date,[]);
+    groups.get(ride.date).push(ride);
+  }
+  $('#timelineFull').innerHTML=[...groups].map(([date,rides])=>{
+    const rows=rides.map(r=>{
+      const c=cm.get(r.coasterId),p=pm.get(c?.parkId),trip=vault.trips.find(t=>t.id===r.tripId);
+      const tripLabel=trip?' · '+esc(trip.name):'';
+      return `<button class="timeline-ride photo-row" data-info="${esc(r.coasterId)}">${c?coasterArt(c,'thumb'):''}<div class="photo-row-copy"><strong>${esc(c?.name||'Unknown coaster')}</strong><span>${esc(p?.name||'')}${tripLabel}</span></div><time>${esc(new Date(r.loggedAt||r.date).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))}</time></button>`;
+    }).join('');
+    return `<section class="timeline-day"><div class="timeline-date"><strong>${esc(date)}</strong><span>${rides.length} ride${rides.length===1?'':'s'}</span></div><div>${rows}</div></section>`;
+  }).join('')||'<div class="empty">No rides logged yet.</div>';
+  $('#timelineFull').querySelectorAll('[data-info]').forEach(b=>b.onclick=()=>openCoaster(b.dataset.info));
+  hydrateExactImages($('#timelineFull'));
+}
 function barRows(items){const max=Math.max(1,...items.map(x=>x.count));return items.slice(0,12).map(x=>`<div class="bar-row"><div><strong>${esc(x.name)}</strong><span>${x.count}</span></div><div class="bar-track"><i style="width:${Math.round(x.count/max*100)}%"></i></div></div>`).join('')||'<div class="empty">Not enough data yet.</div>'}
 function renderStats(){const ids=creditedIds(),cm=coasterMap(),makers=new Map(),types=new Map();for(const id of ids){const c=cm.get(id);if(!c)continue;const maker=manufacturerFor(c);makers.set(maker,(makers.get(maker)||0)+1);const type=shortType(c);types.set(type,(types.get(type)||0)+1)}$('#manufacturerStats').innerHTML=barRows([...makers].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count));$('#typeStats').innerHTML=barRows([...types].map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count));const s=basicStats(),ratings=Object.values(vault.ratings).filter(r=>r.score),avg=ratings.length?(ratings.reduce((sum,r)=>sum+Number(r.score),0)/ratings.length).toFixed(1):'—',completions=parkCompletion().filter(p=>p.complete).length;$('#recordStats').innerHTML=[['Most rides on one coaster',s.topCount],['Completed parks',completions],['Rated coasters',ratings.length],['Average rating',avg],['Favorites',Object.values(vault.ratings).filter(r=>r.favorite).length]].map(([n,v])=>`<div class="record-row"><span>${esc(n)}</span><strong>${esc(v)}</strong></div>`).join('');const y=yearStats();$('#yearStatsFull').innerHTML=[['TOTAL RIDES',y.rides],['NEW CREDITS',y.newCredits],['PARKS',y.parks],['MOST RIDDEN',y.top],['BUSIEST DAY',y.busiestDay],['BUSIEST MONTH',y.busiestMonth]].map(([l,v])=>`<article class="feature-stat"><span>${l}</span><strong>${esc(v)}</strong></article>`).join('');$('#badgeGrid').innerHTML=badges().map(renderBadge).join('')}
 
@@ -215,11 +382,11 @@ async function renderPublicLeaderboard(){const status=$('#publicLeaderboardStatu
 function publicSnapshot(){const s=basicStats();return{displayName:vault.profile.displayName||activeSession?.username||'Coaster rider',credits:s.credits,rides:s.rides,parks:s.parks,topCoaster:s.top,badgeCount:badges().filter(b=>b.unlocked).length,published:vault.profile.publishPublic!==false}}
 async function syncPublicProfile(silent=false){try{publicConfig=await getPublicConfig();if(!publicConfig.publicMode){if(!silent)showToast('Public mode is currently off');return}if(activeSession?.mode==='guest'){if(!silent)showToast('Email sign in or use the owner account to publish');return}const result=await publishProfile(activeSession,publicSnapshot());if(!silent)showToast(`Published ${result.profile.credits} credits to the public board`);renderPublicLeaderboard()}catch(error){if(!silent)showToast(error.message)}}
 
-function renderActiveTripBanner(){const trip=activeTrip(),el=$('#activeTripBanner');if(!trip){el.hidden=true;return}const p=parkMap().get(trip.parkId),rides=vault.rides.filter(r=>r.tripId===trip.id).length;el.hidden=false;el.innerHTML=`<div><div class="kicker">TRIP MODE ACTIVE</div><strong>${esc(trip.name)}</strong><span>${esc(p?.name||'')} · ${rides} rides today</span></div><button class="secondary" id="openTripBanner">OPEN TRIP</button>`;$('#openTripBanner').onclick=()=>switchView('tripMode')}
-function renderTrips(){const parks=[...allParks()].sort((a,b)=>a.name.localeCompare(b.name));$('#tripPark').innerHTML=parks.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(!$('#tripDate').value)$('#tripDate').value=today();const trip=activeTrip();$('#activeTripPanel').innerHTML=trip?(()=>{const p=parkMap().get(trip.parkId),rides=vault.rides.filter(r=>r.tripId===trip.id);return `<section class="trip-live"><div><div class="kicker">LIVE PARK DAY</div><h3>${esc(trip.name)}</h3><p>${esc(p?.name||'')} · ${esc(trip.date)}</p></div><div class="trip-live-count"><strong>${rides.length}</strong><span>RIDES</span></div><button id="endTripBtn" class="secondary danger">END TRIP</button></section>`})():'';$('#endTripBtn')?.addEventListener('click',endTrip);$('#tripHistory').innerHTML=[...vault.trips].sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).map(t=>{const p=parkMap().get(t.parkId),count=vault.rides.filter(r=>r.tripId===t.id).length;return `<div class="trip-history-row"><div><strong>${esc(t.name)}</strong><span>${esc(p?.name||'')} · ${esc(t.date)}</span></div><b>${count} rides</b></div>`}).join('')||'<div class="empty">No trips yet.</div>'}
-async function startTripForPark(parkId){const p=parkMap().get(parkId);if(!p)return;if(activeTrip())return showToast('End your current trip first');const trip={id:crypto.randomUUID(),name:`${p.name} · ${today()}`,parkId,date:today(),startedAt:new Date().toISOString(),endedAt:null};vault.trips.push(trip);vault.activeTripId=trip.id;await persist();switchView('tripMode');showToast(`Trip mode started · ${p.name}`)}
-async function startTrip(){if(activeTrip())return showToast('End your current trip first');const parkId=$('#tripPark').value,p=parkMap().get(parkId),trip={id:crypto.randomUUID(),name:$('#tripName').value.trim()||`${p?.name||'Park day'} · ${$('#tripDate').value||today()}`,parkId,date:$('#tripDate').value||today(),startedAt:new Date().toISOString(),endedAt:null};vault.trips.push(trip);vault.activeTripId=trip.id;$('#tripName').value='';await persist();showToast('Trip mode started')}
-async function endTrip(){const trip=activeTrip();if(!trip)return;trip.endedAt=new Date().toISOString();vault.activeTripId=null;await persist();showToast('Trip ended')}
+function renderActiveTripBanner(){const trip=activeTrip(),el=$('#activeTripBanner');if(!trip){el.hidden=true;return}const p=parkMap().get(trip.parkId),rides=vault.rides.filter(r=>r.tripId===trip.id).length;el.hidden=false;el.innerHTML=`<div><div class="kicker">CHECKED IN</div><strong>${esc(trip.name)}</strong><span>${esc(p?.name||'')} · ${rides} rides this session</span></div><button class="secondary" id="openTripBanner">OPEN PARK DAY</button>`;$('#openTripBanner').onclick=()=>switchView('tripMode')}
+function renderTrips(){const parks=[...allParks()].sort((a,b)=>a.name.localeCompare(b.name));$('#tripPark').innerHTML=parks.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(!$('#tripDate').value)$('#tripDate').value=today();const trip=activeTrip();$('#activeTripPanel').innerHTML=trip?(()=>{const p=parkMap().get(trip.parkId),rides=vault.rides.filter(r=>r.tripId===trip.id);return `<section class="trip-live"><div><div class="kicker">CHECKED IN</div><h3>${esc(trip.name)}</h3><p>${esc(p?.name||'')} · checked in ${esc(new Date(sessionCheckIn(trip)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))}</p></div><div class="trip-live-count"><strong>${rides.length}</strong><span>RIDES</span></div><button id="endTripBtn" class="secondary danger">CHECK OUT</button></section>`})():'';$('#endTripBtn')?.addEventListener('click',endTrip);$('#tripHistory').innerHTML=[...vault.trips].sort((a,b)=>String(sessionCheckIn(b)||'').localeCompare(String(sessionCheckIn(a)||''))).map(t=>{const p=parkMap().get(t.parkId),count=vault.rides.filter(r=>r.tripId===t.id).length,status=sessionCheckOut(t)?'Checked out':'Checked in';return `<div class="trip-history-row"><div><strong>${esc(t.name)}</strong><span>${esc(p?.name||'')} · ${esc(sessionDate(t))} · ${status}</span></div><b>${count} rides</b></div>`}).join('')||'<div class="empty">No park sessions yet.</div>'}
+async function startTripForPark(parkId){const p=parkMap().get(parkId);if(!p)return;if(activeTrip())return showToast('Check out of your current park first');const now=new Date().toISOString();const trip={id:crypto.randomUUID(),name:`${p.name} · ${today()}`,parkId,date:today(),checkedInAt:now,checkedOutAt:null,startedAt:now,endedAt:null};vault.trips.push(trip);vault.activeTripId=trip.id;await persist();switchView('tripMode');showToast(`Checked in · ${p.name}`)}
+async function startTrip(){if(activeTrip())return showToast('Check out of your current park first');const parkId=$('#tripPark').value,p=parkMap().get(parkId),now=new Date().toISOString(),trip={id:crypto.randomUUID(),name:$('#tripName').value.trim()||`${p?.name||'Park day'} · ${$('#tripDate').value||today()}`,parkId,date:$('#tripDate').value||today(),checkedInAt:now,checkedOutAt:null,startedAt:now,endedAt:null};vault.trips.push(trip);vault.activeTripId=trip.id;$('#tripName').value='';await persist();showToast('Checked in')}
+async function endTrip(){const trip=activeTrip();if(!trip)return;const now=new Date().toISOString();trip.checkedOutAt=now;trip.endedAt=now;vault.activeTripId=null;await persist();showToast('Checked out · park day saved')}
 
 function renderSettings(){$('#profileName').value=vault.profile.displayName||'';$('#profilePublish').checked=Boolean(vault.profile.publishPublic);fillAdFeatured();const panel=$('#publicSettingsPanel');if(activeSession?.mode!=='private'){panel.innerHTML='<h3>Public mode</h3><p class="muted">Only the private owner account can change site-wide public mode. Your local tracker still works normally.</p>';return}getOwnerPublicMode(activeSession).then(async settings=>{publicConfig=await getPublicConfig().catch(()=>publicConfig);$('#publicModeToggle').checked=Boolean(settings.publicMode);$('#publicSignupToggle').checked=Boolean(settings.signups);$('#publicSignupToggle').disabled=!settings.publicMode;$('#publicSettingsStatus').innerHTML=`Backend: <strong>Netlify Blobs</strong> · Supabase: <strong>not required</strong><br>Email: <strong>${publicConfig.emailEnabled?'Resend ready':'add RESEND_API_KEY + CV_EMAIL_FROM + CV_AUTH_SECRET'}</strong>`}).catch(error=>$('#publicSettingsStatus').textContent=error.message)}
 
@@ -235,14 +402,15 @@ async function savePublicSettings(){if(activeSession?.mode!=='private')return;tr
 function renderAll(){renderDashboard();renderParks();renderCredits();renderTimeline();renderStats();renderLeaderboard();renderTrips();renderSettings();if(activeParkId&&$('#parkDetail').classList.contains('active-view'))renderParkDetail()}
 function switchView(id){$$('.view').forEach(v=>v.classList.toggle('active-view',v.id===id));$$('.nav-btn,.mobile-tab').forEach(b=>b.classList.toggle('active',b.dataset.view===id));if(id==='leaderboard')renderPublicLeaderboard();if(id==='settings')renderSettings();window.scrollTo({top:0,behavior:'instant'})}
 
-function openCoaster(id){const c=coasterMap().get(id),p=parkMap().get(c?.parkId);if(!c)return;const rides=[...ridesFor(id)].sort((a,b)=>String(b.loggedAt||'').localeCompare(String(a.loggedAt||''))),r=ratingFor(id),manufacturer=manufacturerFor(c);$('#modalBody').innerHTML=`<div class="modal-hero">${coasterArt(c,'hero')}<div class="modal-hero-copy"><div class="kicker">${countFor(id)?'CREDIT EARNED':'UNRIDDEN'}</div><h3>${esc(c.name)}</h3><p>${esc(p?.name||'')} · ${esc(formatLocation(p||{}))}</p></div></div><div class="detail-facts"><div><span>MANUFACTURER</span><strong>${esc(manufacturer)}</strong></div><div><span>TYPE</span><strong>${esc(c.classification)}</strong></div><div><span>MATERIAL</span><strong>${esc(c.material)}</strong></div><div><span>TOTAL RIDES</span><strong>${rides.length}</strong></div></div><div class="rating-block"><div class="section-head"><div><div class="kicker">YOUR RATING</div><h3>${r.score?`${r.score}/10`:'Not rated'}</h3></div><button id="modalFavorite" class="favorite big ${r.favorite?'on':''}">♥ FAVORITE</button></div><div class="rating-buttons">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button data-rate="${n}" class="${r.score===n?'active':''}">${n}</button>`).join('')}</div></div><div class="form-grid detail-form"><label>Personal rank<input id="modalRank" type="number" min="1" inputmode="numeric" value="${r.rank||''}" placeholder="#1"></label><label>Notes<textarea id="modalNotes" rows="3" placeholder="Airtime, row preference, night ride notes…">${esc(r.notes||'')}</textarea></label></div><div class="modal-actions"><button class="primary" id="modalPlus">+1 RIDE</button><button class="secondary" id="saveCoasterMeta">SAVE RATING / RANK</button>${rides.length?'<button class="secondary danger" id="undoRide">UNDO LAST</button>':''}</div>${rides.length?`<div class="modal-history"><div class="kicker">RECENT LOGS</div>${rides.slice(0,10).map(ride=>`<div class="timeline-item"><strong>${esc(ride.date)}</strong><span>${esc(new Date(ride.loggedAt).toLocaleString())}</span></div>`).join('')}</div>`:''}`;$('#modal').hidden=false;$('#modalPlus').onclick=()=>logRide(id).then(()=>openCoaster(id));$('#modalFavorite').onclick=async()=>{setRating(id,{favorite:!ratingFor(id).favorite});await persist();openCoaster(id)};$('#modalBody').querySelectorAll('[data-rate]').forEach(b=>b.onclick=async()=>{setRating(id,{score:Number(b.dataset.rate)});await persist();openCoaster(id)});$('#saveCoasterMeta').onclick=async()=>{const rank=Math.max(0,Number($('#modalRank').value)||0);setRating(id,{rank:rank||null,notes:$('#modalNotes').value.trim()});await persist();openCoaster(id);showToast('Rating and rank saved')};const undo=$('#undoRide');if(undo)undo.onclick=async()=>{const target=rides[0];vault.rides=vault.rides.filter(x=>x.id!==target.id);await persist();openCoaster(id);showToast('Last ride removed')}}
+function openCoaster(id){const c=coasterMap().get(id),p=parkMap().get(c?.parkId);if(!c)return;const rides=[...ridesFor(id)].sort((a,b)=>String(b.loggedAt||'').localeCompare(String(a.loggedAt||''))),r=ratingFor(id),manufacturer=manufacturerFor(c);$('#modalBody').innerHTML=`<div class="modal-hero">${coasterArt(c,'hero')}<div class="modal-hero-copy"><div class="kicker">${countFor(id)?'CREDIT EARNED':'UNRIDDEN'}</div><h3>${esc(c.name)}</h3><p>${esc(p?.name||'')} · ${esc(formatLocation(p||{}))}</p></div></div><div class="detail-facts"><div><span>MANUFACTURER</span><strong>${esc(manufacturer)}</strong></div><div><span>TYPE</span><strong>${esc(c.classification)}</strong></div><div><span>MATERIAL</span><strong>${esc(c.material)}</strong></div><div><span>TOTAL RIDES</span><strong>${rides.length}</strong></div></div><div class="rating-block"><div class="section-head"><div><div class="kicker">YOUR RATING</div><h3>${r.score?`${r.score}/10`:'Not rated'}</h3></div><button id="modalFavorite" class="favorite big ${r.favorite?'on':''}">♥ FAVORITE</button></div><div class="rating-buttons">${Array.from({length:10},(_,i)=>i+1).map(n=>`<button data-rate="${n}" class="${r.score===n?'active':''}">${n}</button>`).join('')}</div></div><div class="form-grid detail-form"><label>Personal rank<input id="modalRank" type="number" min="1" inputmode="numeric" value="${r.rank||''}" placeholder="#1"></label><label>Notes<textarea id="modalNotes" rows="3" placeholder="Airtime, row preference, night ride notes…">${esc(r.notes||'')}</textarea></label></div><div class="modal-actions"><button class="primary" id="modalPlus">+1 RIDE</button><button class="secondary" id="saveCoasterMeta">SAVE RATING / RANK</button>${rides.length?'<button class="secondary danger" id="undoRide">UNDO LAST</button>':''}</div>${rides.length?`<div class="modal-history"><div class="kicker">RECENT LOGS</div>${rides.slice(0,10).map(ride=>`<div class="timeline-item"><strong>${esc(ride.date)}</strong><span>${esc(new Date(ride.loggedAt).toLocaleString())}</span></div>`).join('')}</div>`:''}`;$('#modal').hidden=false;hydrateExactImages($('#modalBody'));$('#modalPlus').onclick=()=>logRide(id).then(()=>openCoaster(id));$('#modalFavorite').onclick=async()=>{setRating(id,{favorite:!ratingFor(id).favorite});await persist();openCoaster(id)};$('#modalBody').querySelectorAll('[data-rate]').forEach(b=>b.onclick=async()=>{setRating(id,{score:Number(b.dataset.rate)});await persist();openCoaster(id)});$('#saveCoasterMeta').onclick=async()=>{const rank=Math.max(0,Number($('#modalRank').value)||0);setRating(id,{rank:rank||null,notes:$('#modalNotes').value.trim()});await persist();openCoaster(id);showToast('Rating and rank saved')};const undo=$('#undoRide');if(undo)undo.onclick=async()=>{const target=rides[0];vault.rides=vault.rides.filter(x=>x.id!==target.id);await persist();openCoaster(id);showToast('Last ride removed')}}
 
 function openQuickLog(){$('#modalBody').innerHTML='<div class="kicker">QUICK LOG</div><h3>What did you ride?</h3><div class="search-wrap"><input id="modalQuickSearch" class="search" placeholder="Search coaster or park…" autofocus></div><div id="modalQuickResults" class="coaster-list compact"></div>';$('#modal').hidden=false;const input=$('#modalQuickSearch'),render=()=>{const q=input.value.trim().toLowerCase();const list=allCoasters().filter(c=>{if(!q)return true;const p=parkMap().get(c.parkId);return `${c.name} ${p?.name} ${p?.state}`.toLowerCase().includes(q)}).sort((a,b)=>countFor(b.id)-countFor(a.id)||a.name.localeCompare(b.name)).slice(0,10);$('#modalQuickResults').innerHTML=list.map(coasterCard).join('');bindCoasterCards($('#modalQuickResults'))};input.oninput=render;render();setTimeout(()=>input.focus(),50)}
 
 function openCustom(){const parks=allParks().sort((a,b)=>a.name.localeCompare(b.name));$('#modalBody').innerHTML=`<div class="kicker">DATABASE MISSING SOMETHING?</div><h3>Add a coaster</h3><div class="form-grid"><label>Coaster name<input id="newName" placeholder="Coaster name"></label><label>Park<select id="newPark"><option value="__new">+ Add new park</option>${parks.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label><div id="newParkFields"><label>New park name<input id="newParkName" placeholder="Theme park"></label><label>Location<input id="newLocation" placeholder="City, State"></label></div><label>Material<select id="newMaterial"><option>Steel</option><option>Wood</option><option>Hybrid</option></select></label><label>Type / classification<input id="newClass" placeholder="Giga, Hyper, Launch, Inverted…"></label></div><div class="modal-actions"><button id="saveCustom" class="primary">SAVE + LOG FIRST RIDE</button></div>`;$('#modal').hidden=false;const sel=$('#newPark'),sync=()=>$('#newParkFields').style.display=sel.value==='__new'?'grid':'none';sel.onchange=sync;sync();$('#saveCustom').onclick=async()=>{const name=$('#newName').value.trim(),classification=$('#newClass').value.trim()||'Unclassified';if(!name)return showToast('Enter a coaster name');let parkId=sel.value;if(parkId==='__new'){const pn=$('#newParkName').value.trim();if(!pn)return showToast('Enter the park name');const loc=$('#newLocation').value.split(',').map(x=>x.trim());parkId='custom-park-'+crypto.randomUUID();vault.customParks.push({id:parkId,name:pn,city:loc[0]||'',state:loc[1]||'',country:loc[2]||'USA'})}const id='custom-coaster-'+crypto.randomUUID();vault.customCoasters.push({id,name,parkId,material:$('#newMaterial').value,classification});$('#modal').hidden=true;await logRide(id)}}
 
 export async function boot(session){
-  activeSession=session;
+  const isPrivate=session?.mode!=='public'&&session?.mode!=='guest';
+  activeSession=isPrivate?{...session,mode:'private',role:'owner'}:session;
   activePassword=String(session?.password??'').trim();
   if(!activePassword) throw new Error('Authenticated session is missing its local vault key.');
   vault=await loadVault(activePassword);
@@ -253,10 +421,15 @@ export async function boot(session){
   await saveVault(activePassword,vault);
   if(session?.mode==='public'&&session.publicToken) queueCloudSync();
   $('#loginScreen').hidden=true;$('#app').hidden=false;
+  $('#ownerHub').hidden=activeSession?.role!=='owner';
   publicConfig=await getPublicConfig().catch(()=>publicConfig);
   renderAll();generateAd();
 }
 
+$('#ownerHub').onclick=()=>{
+  switchView('settings');
+  setTimeout(()=>document.querySelector('#shareStudio')?.scrollIntoView({behavior:'smooth',block:'start'}),120);
+};
 $('#logout').onclick=()=>{if(activeSession?.mode==='public')clearPublicSession();location.reload()};
 $$('.nav-btn,.mobile-tab,.nav-jump').forEach(b=>b.onclick=()=>b.dataset.view&&switchView(b.dataset.view));
 $('#quickSearch').oninput=renderQuick;$('#clearSearch').onclick=()=>{$('#quickSearch').value='';renderQuick();$('#quickSearch').focus()};$('#parkSearch').oninput=renderParks;$('#creditSearch').oninput=renderCredits;$('#creditSort').onchange=renderCredits;$('#backParks').onclick=()=>switchView('parks');$('#addCustomBtn').onclick=openCustom;$('#mobileLog').onclick=openQuickLog;$('#modalClose').onclick=()=>$('#modal').hidden=true;$('#modal').onclick=e=>{if(e.target===$('#modal'))$('#modal').hidden=true};
